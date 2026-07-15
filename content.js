@@ -1,22 +1,23 @@
 // content.js
-// Netwrix EPP menggunakan dua UI framework berbeda di halaman yang berbeda:
-//  - Bootstrap-style (mis. Device Control, Content Aware Protection): .panel-epp / .card-title / .form-group
-//  - ExtJS-style (mis. System Configuration): .x-panel / .x-panel-header / .form-row
+// Netwrix EPP uses two different UI frameworks across different pages:
+//  - Bootstrap-style (e.g. Device Control, Content Aware Protection): .panel-epp / .card-title / .form-group
+//  - ExtJS-style (e.g. System Configuration): .x-panel / .x-panel-header / .form-row
 //
-// Dibungkus dalam IIFE karena Netwrix EPP adalah SPA (single-page app) yang tidak
-// pernah reload halaman penuh saat berpindah antar policy/menu. Tanpa IIFE, deklarasi
-// top-level (const/function) akan bentrok "Identifier has already been declared" saat
-// script ini di-inject ulang oleh popup.js pada eksekusi kedua dan seterusnya di
-// halaman yang sama, sehingga ekspor gagal total hingga extension di-reload manual.
+// Wrapped in an IIFE because Netwrix EPP is an SPA (single-page app) that never
+// does a full page reload when switching between policies/menus. Without the IIFE,
+// top-level declarations (const/function) would collide with "Identifier has
+// already been declared" when this script is re-injected by popup.js on the
+// second and subsequent runs on the same page, causing export to fail completely
+// until the extension is reloaded manually.
 (function () {
 
-// Buka semua panel accordion yang sedang tertutup (mis. Policy Denylists, Policy
-// Allowlists, DPI Monitored URL Categories di halaman Edit Policy) sebelum ekstraksi
-// berjalan. Panel yang tertutup punya .card-body.epp-hidden (display:none) sehingga
-// semua pemeriksaan offsetParent di ekstraktor akan melewatkannya begitu saja --
-// tanpa langkah ini, hasil ekspor hanya berisi panel yang KEBETULAN sudah terbuka
-// saat pengguna membuka halaman. Manipulasi class langsung dipakai (bukan .click())
-// karena toggle collapse di app ini tidak merespons event yang di-dispatch skrip.
+// Open every collapsed accordion panel (e.g. Policy Denylists, Policy Allowlists,
+// DPI Monitored URL Categories on the Edit Policy page) before extraction runs.
+// A collapsed panel has .card-body.epp-hidden (display:none), so every offsetParent
+// check in the extractors would simply skip it -- without this step, the export
+// would only contain whatever panel HAPPENED to already be open when the user
+// loaded the page. Class manipulation is used directly (not .click()) because the
+// collapse toggle in this app does not respond to script-dispatched events.
 function expandAllCollapsedPanels() {
   document.querySelectorAll('.card-body.epp-hidden').forEach(body => {
     body.classList.remove('epp-hidden');
@@ -25,19 +26,20 @@ function expandAllCollapsedPanels() {
   });
 }
 
-// Buka semua tab Bootstrap (.tab-pane) sekaligus, bukan hanya tab yang sedang aktif,
-// dengan menambahkan class "active show" ke semuanya. Tanpa ini, ekstraktor hanya
-// melihat tab pertama/terakhir yang diklik pengguna (mis. hanya "MIME Type", padahal
-// ada "Allowed Files", "E-mail Domain", "Deep Packet Inspection" di tab lain).
+// Open all Bootstrap tabs (.tab-pane) at once, not just the currently active one,
+// by adding the "active show" class to all of them. Without this, the extractor
+// only sees the first/last tab the user clicked (e.g. only "MIME Type", even
+// though "Allowed Files", "E-mail Domain", "Deep Packet Inspection" exist in
+// other tabs).
 function expandAllTabs() {
   document.querySelectorAll('.tab-pane').forEach(pane => {
     pane.classList.add('active', 'show');
   });
 }
 
-// Setelah semua tab dipaksa terbuka bersamaan, tidak ada lagi satu nav-link ".active"
-// yang valid secara global. Cari nama tab untuk sebuah elemen lewat id tab-pane
-// terdekatnya, dicocokkan ke nav-link yang href-nya menunjuk id tersebut.
+// Once all tabs are forced open at the same time, there is no longer a single
+// globally-valid ".active" nav-link. Find the tab name for an element via its
+// nearest tab-pane id, matched to the nav-link whose href points to that id.
 function findTabLabelForElement(el) {
   const pane = el.closest('.tab-pane');
   if (!pane || !pane.id) return null;
@@ -51,13 +53,13 @@ function getRadioOptionText(radioEl) {
   let text = "";
   let node = radioEl.nextSibling;
   while (node) {
-    if (node.nodeType === 1 && node.tagName === 'INPUT') break; // baris berikutnya milik radio lain
+    if (node.nodeType === 1 && node.tagName === 'INPUT') break; // the next node belongs to another radio
     text += node.textContent || "";
     node = node.nextSibling;
   }
   text = text.replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
-  // Beberapa toggle radio (mis. Server Maintenance) tidak punya teks label sama sekali
-  // di DOM (hanya value="0"/"1" tanpa sibling text terbaca) -- perlakukan sebagai boolean.
+  // Some radio toggles (e.g. Server Maintenance) have no label text at all in the
+  // DOM (just value="0"/"1" with no readable sibling text) -- treat as boolean.
   if (!text && (radioEl.value === '0' || radioEl.value === '1')) {
     return radioEl.value === '1' ? 'ON' : 'OFF';
   }
@@ -72,7 +74,7 @@ function pushRow(csvRows, panelTitle, configName, configValue) {
   csvRows.push(`"${cleanPanel}","${cleanName}","${cleanValue}"`);
 }
 
-// Ekstraksi untuk UI Bootstrap-style: .panel-epp / .card-title / .form-group
+// Extraction for Bootstrap-style UI: .panel-epp / .card-title / .form-group
 function extractBootstrapPanels(csvRows) {
   const panels = document.querySelectorAll('.panel-epp');
 
@@ -80,8 +82,8 @@ function extractBootstrapPanels(csvRows) {
     const panelTitleEl = panel.querySelector('.card-title');
     const panelTitle = panelTitleEl ? panelTitleEl.innerText.trim() : "General";
 
-    // .form-group: pola lama (halaman list/filter). .mb-3.row: pola Bootstrap 5
-    // yang dipakai halaman Edit/Detail (mis. Edit Policy, Edit Custom Class).
+    // .form-group: the older pattern (list/filter pages). .mb-3.row: the Bootstrap 5
+    // pattern used on Edit/Detail pages (e.g. Edit Policy, Edit Custom Class).
     const formGroups = panel.querySelectorAll('.form-group, .mb-3.row');
     const seenGroups = new Set();
     const handledRadioNames = new Set();
@@ -89,11 +91,11 @@ function extractBootstrapPanels(csvRows) {
     formGroups.forEach(group => {
       if (seenGroups.has(group)) return;
       seenGroups.add(group);
-      if (group.offsetParent === null) return; // lewati field tersembunyi (mis. panel Filters yang ditutup)
+      if (group.offsetParent === null) return; // skip hidden fields (e.g. a closed Filters panel)
 
       const labelEl = group.querySelector('label.control-label, label:not(.btn)');
 
-      // Radio button tanpa label pada .form-group itu sendiri
+      // Radio button with no label on the .form-group itself
       const radioEl = group.querySelector('input[type="radio"]');
       if (!labelEl && radioEl) {
         const groupName = radioEl.name;
@@ -141,7 +143,7 @@ function extractBootstrapPanels(csvRows) {
   });
 }
 
-// Ekstraksi untuk UI ExtJS-style: .x-panel / .x-panel-header / .form-row
+// Extraction for ExtJS-style UI: .x-panel / .x-panel-header / .form-row
 function extractExtJsPanels(csvRows) {
   const panels = document.querySelectorAll('.x-panel');
 
@@ -149,17 +151,17 @@ function extractExtJsPanels(csvRows) {
     const panelTitleEl = panel.querySelector('.x-panel-header');
     const panelTitle = panelTitleEl ? panelTitleEl.innerText.trim() : "General";
 
-    // [class*="form-row"] menangkap juga varian seperti .form-row-noborder-system-status
-    // (halaman System Status) selain .form-row / .form-row-noborder standar.
+    // [class*="form-row"] also catches variants like .form-row-noborder-system-status
+    // (the System Status page) in addition to the standard .form-row / .form-row-noborder.
     const rows = panel.querySelectorAll('[class*="form-row"]');
     const handledRadioNames = new Set();
 
     rows.forEach(row => {
-      if (row.offsetParent === null) return; // lewati field tersembunyi
+      if (row.offsetParent === null) return; // skip hidden fields
 
       const labelEl = row.querySelector('label');
 
-      // Radio button tanpa <label> terpisah, teks langsung di dalam .content
+      // Radio button with no separate <label>, text sits directly inside .content
       const radioEl = row.querySelector('input[type="radio"]');
       if (!labelEl && radioEl) {
         const groupName = radioEl.name;
@@ -181,7 +183,7 @@ function extractExtJsPanels(csvRows) {
 
       const selectEls = row.querySelectorAll('select');
       if (selectEls.length > 0) {
-        // Beberapa baris punya lebih dari satu <select> (mis. Time Zone: region + kota).
+        // Some rows have more than one <select> (e.g. Time Zone: region + city).
         configValue = Array.from(selectEls).map(selectEl => {
           if (selectEl.multiple) {
             return Array.from(selectEl.selectedOptions).map(o => o.innerText.trim()).filter(Boolean).join(', ');
@@ -202,16 +204,16 @@ function extractExtJsPanels(csvRows) {
         const textArea = row.querySelector('textarea');
         configValue = textArea.value.trim();
       } else if (row.querySelector('input[type="image"]')) {
-        // Toggle bergambar (mis. System Status): status ON/OFF disimpan di nama file
-        // gambar (buttonon.png / buttonoff.png), bukan di atribut checked.
+        // Image-based toggle (e.g. System Status): ON/OFF state is stored in the
+        // image file name (buttonon.png / buttonoff.png), not a checked attribute.
         const imgToggle = row.querySelector('input[type="image"]');
         const srcFilename = imgToggle.src.split('/').pop().split('?')[0].toLowerCase();
         if (srcFilename.includes('on')) configValue = 'ON';
         else if (srcFilename.includes('off')) configValue = 'OFF';
       } else {
-        // Baris info read-only (mis. Server Information: Disk Space, Uptime) --
-        // tidak ada input sama sekali, hanya teks polos di dalam .content
-        // (atau variannya, mis. .content-system-status di halaman System Status).
+        // Read-only info row (e.g. Server Information: Disk Space, Uptime) -- no
+        // input at all, just plain text inside .content (or a variant of it, e.g.
+        // .content-system-status on the System Status page).
         const contentEl = row.querySelector('[class*="content"]');
         if (contentEl) configValue = contentEl.innerText.trim();
       }
@@ -221,9 +223,9 @@ function extractExtJsPanels(csvRows) {
   });
 }
 
-// Ekstraksi daftar Device Rights (mis. Global Rights): baris berbentuk
-// .rights-list-view .row.new-line, bukan .form-group biasa. Label ada di
-// div.col-label (bukan .col-switch), nilai ada di <select> atau checkbox toggle.
+// Extraction for Device Rights lists (e.g. Global Rights): rows shaped as
+// .rights-list-view .row.new-line, not a regular .form-group. The label lives in
+// div.col-label (not .col-switch), the value in a <select> or checkbox toggle.
 function extractRightsListRows(csvRows) {
   const containers = document.querySelectorAll('.rights-list-view');
 
@@ -235,7 +237,7 @@ function extractRightsListRows(csvRows) {
 
     const rows = container.querySelectorAll('.row.new-line');
     rows.forEach(row => {
-      if (row.offsetParent === null) return; // lewati field tersembunyi
+      if (row.offsetParent === null) return; // skip hidden fields
 
       const labelEl = row.querySelector('.col-label:not(.col-switch)');
       if (!labelEl) return;
@@ -257,7 +259,8 @@ function extractRightsListRows(csvRows) {
   });
 }
 
-// Header kolom yang lebih layak dipakai sebagai pengenal baris (nama, bukan nomor urut).
+// Column headers that are a better fit as the row identifier (a name, not a
+// sequence number).
 const PREFERRED_IDENTIFIER_HEADERS = [
   'name', 'computer name', 'device name', 'policy', 'username', 'class name',
   'group name', 'title', 'user', 'computer'
@@ -266,12 +269,13 @@ const PREFERRED_IDENTIFIER_HEADERS = [
 function pickTableRowIdentifier(pairs) {
   let match = pairs.find(p => PREFERRED_IDENTIFIER_HEADERS.includes(p.header.toLowerCase()));
   if (match) return match;
-  match = pairs.find(p => !/^\d+$/.test(p.value)); // hindari kolom angka urutan (mis. Priority)
+  match = pairs.find(p => !/^\d+$/.test(p.value)); // avoid a sequence-number column (e.g. Priority)
   return match || pairs[0];
 }
 
-// Baca nilai cell tabel; deteksi toggle switch ON/OFF (dua <span> "on"/"off" yang
-// selalu ada di DOM, status sebenarnya ada di checkbox tersembunyi di sampingnya).
+// Read a table cell's value; detect an ON/OFF toggle switch (two <span> "on"/"off"
+// elements that are always present in the DOM, with the real state on the hidden
+// checkbox next to them).
 function readTableCellValue(cell) {
   const toggleCheckbox = cell.querySelector('input[type="checkbox"].checkbox-status, input[type="checkbox"]');
   if (toggleCheckbox && cell.querySelector('.epp-btn-toggle')) {
@@ -280,8 +284,9 @@ function readTableCellValue(cell) {
   return cell.innerText.trim();
 }
 
-// Ekstraksi kartu kebijakan (mis. eDiscovery Policies, Content Aware Policies versi kartu):
-// .epp-policy-box berisi judul, prioritas, deskripsi, dan toggle status ON/OFF.
+// Extraction for policy cards (e.g. eDiscovery Policies, the card view of Content
+// Aware Policies): .epp-policy-box holds a title, priority, description, and an
+// ON/OFF status toggle.
 function extractPolicyCards(csvRows) {
   const boxes = document.querySelectorAll('.epp-policy-box');
 
@@ -310,15 +315,15 @@ function extractPolicyCards(csvRows) {
   });
 }
 
-// Ekstraksi daftar pseudo-checkbox (mis. MIME Type di halaman Allowlists/Denylists):
-// .epp-pseudo-checkbox-group berisi <input type="checkbox"> + <label> sebagai saudara,
-// bukan checkbox di dalam label seperti pola .form-group biasa.
+// Extraction for pseudo-checkbox lists (e.g. MIME Type on the Allowlists/Denylists
+// pages): .epp-pseudo-checkbox-group holds an <input type="checkbox"> + <label> as
+// siblings, not a checkbox nested inside the label like the regular .form-group pattern.
 function extractPseudoCheckboxGroups(csvRows) {
   const groups = document.querySelectorAll('.epp-pseudo-checkbox-group');
 
   groups.forEach(group => {
-    if (group.offsetParent === null) return; // lewati tab yang sedang tidak aktif
-    if (group.closest('.title_wrapper')) return; // lewati toggle "select all" pada widget dual-list (mis. DPI Monitored URL Categories)
+    if (group.offsetParent === null) return; // skip an inactive tab
+    if (group.closest('.title_wrapper')) return; // skip the "select all" toggle on a dual-list widget (e.g. DPI Monitored URL Categories)
 
     const checkbox = group.querySelector('input.pseudo-checkbox, input[type="checkbox"]');
     const labelEl = group.querySelector('label');
@@ -331,19 +336,20 @@ function extractPseudoCheckboxGroups(csvRows) {
     const sectionHeading = container ? container.querySelector('h2, h3, h4') : null;
     const panelEl = group.closest('.panel-epp, .x-panel');
     const panelTitleEl = panelEl && (panelEl.querySelector('.card-title') || panelEl.querySelector('.x-panel-header'));
-    // Cari nama tab lewat id tab-pane (bukan ".active" global), karena semua tab
-    // dipaksa terbuka bersamaan oleh expandAllTabs() sebelum ekstraksi berjalan.
+    // Find the tab name via the tab-pane id (not a global ".active"), because all
+    // tabs are forced open together by expandAllTabs() before extraction runs.
     const tabLabel = findTabLabelForElement(group);
 
     const parts = [panelTitleEl?.innerText.trim(), tabLabel, sectionHeading?.innerText.trim()].filter(Boolean);
-    const category = parts.join(' - ') || 'Umum';
+    const category = parts.join(' - ') || 'General';
 
     pushRow(csvRows, category, name, value);
   });
 }
 
-// Ekstraksi ringkasan aturan Content Detection (mis. "X OR Y") di halaman Edit Policy:
-// .cf_content_summary berisi <ul> daftar kondisi yang sudah terbaca alami via innerText.
+// Extraction for the Content Detection rule summary (e.g. "X OR Y") on the Edit
+// Policy page: .cf_content_summary holds a <ul> of conditions that reads naturally
+// via innerText.
 function extractContentDetectionRules(csvRows) {
   const summaries = document.querySelectorAll('.cf_content_summary');
 
@@ -355,15 +361,15 @@ function extractContentDetectionRules(csvRows) {
     const rule = ul.innerText.replace(/\s+/g, ' ').trim();
     const panelEl = summary.closest('.panel-epp, .x-panel');
     const panelTitleEl = panelEl && (panelEl.querySelector('.card-title') || panelEl.querySelector('.x-panel-header'));
-    const panelTitle = panelTitleEl ? panelTitleEl.innerText.trim() : 'Umum';
+    const panelTitle = panelTitleEl ? panelTitleEl.innerText.trim() : 'General';
 
     pushRow(csvRows, panelTitle, 'Content Detection Rule', rule);
   });
 }
 
-// Ekstraksi panel entitas (mis. Policy Entities: Departments/Groups/Computers/Users):
-// .epp-panel-entities berisi daftar checkbox per kategori; hanya item yang
-// dicentang yang diekstrak (item kosong = "berlaku untuk semua", tidak perlu dicatat).
+// Extraction for entity panels (e.g. Policy Entities: Departments/Groups/Computers/Users):
+// .epp-panel-entities holds a checkbox list per category; only checked items are
+// extracted (an empty list means "applies to everyone", nothing to record).
 function extractEntityLists(csvRows) {
   const panels = document.querySelectorAll('.epp-panel-entities');
 
@@ -371,7 +377,7 @@ function extractEntityLists(csvRows) {
     if (panel.offsetParent === null) return;
 
     const categoryEl = panel.querySelector('.card-header .epp-center-label');
-    const category = categoryEl ? categoryEl.innerText.trim() : 'Umum';
+    const category = categoryEl ? categoryEl.innerText.trim() : 'General';
 
     const checkedLabels = Array.from(panel.querySelectorAll('.card-body input[type="checkbox"]:checked'))
       .map(cb => cb.closest('li')?.querySelector('.form-check-label, label')?.innerText.trim())
@@ -380,24 +386,25 @@ function extractEntityLists(csvRows) {
 
     const parentPanelEl = panel.closest('.panel-epp, .x-panel');
     const parentTitleEl = parentPanelEl && (parentPanelEl.querySelector('.card-title') || parentPanelEl.querySelector('.x-panel-header'));
-    const parentTitle = parentTitleEl ? parentTitleEl.innerText.trim() : 'Umum';
+    const parentTitle = parentTitleEl ? parentTitleEl.innerText.trim() : 'General';
 
     pushRow(csvRows, parentTitle, category, checkedLabels.join(', '));
   });
 }
 
-// Ekstraksi <select multiple> tanpa <label> (mis. tab "Custom Content"/"Predefined
-// Content"/"HIPAA" dsb. di Policy Denylists/Allowlists): item terpilih dirender
-// select2 sebagai chip "(x) Nama", tanpa label field sama sekali. Karena tidak ada
-// label, baris ini dilewati oleh extractBootstrapPanels dan perlu ditangani terpisah.
+// Extraction for <select multiple> with no <label> (e.g. the "Custom Content" /
+// "Predefined Content" / "HIPAA" etc. tabs on Policy Denylists/Allowlists): the
+// selected items are rendered by select2 as "(x) Name" chips, with no field label
+// at all. Since there is no label, this row is skipped by extractBootstrapPanels
+// and needs to be handled separately.
 function extractLabellessMultiSelects(csvRows) {
   const selects = document.querySelectorAll('select[multiple]');
 
   selects.forEach(select => {
     const row = select.closest('.mb-3.row, .form-group');
     if (row) {
-      if (row.offsetParent === null) return; // lewati tab yang tidak aktif
-      if (row.querySelector('label.control-label, label:not(.btn)')) return; // sudah ditangani extractBootstrapPanels
+      if (row.offsetParent === null) return; // skip an inactive tab
+      if (row.querySelector('label.control-label, label:not(.btn)')) return; // already handled by extractBootstrapPanels
     }
 
     const selectedOptions = Array.from(select.selectedOptions).map(o => o.textContent.trim()).filter(Boolean);
@@ -405,7 +412,7 @@ function extractLabellessMultiSelects(csvRows) {
 
     const panelEl = select.closest('.panel-epp, .x-panel');
     const panelTitleEl = panelEl && (panelEl.querySelector('.card-title') || panelEl.querySelector('.x-panel-header'));
-    const panelTitle = panelTitleEl ? panelTitleEl.innerText.trim() : 'Umum';
+    const panelTitle = panelTitleEl ? panelTitleEl.innerText.trim() : 'General';
     const tabLabel = findTabLabelForElement(select);
     const category = [panelTitle, tabLabel].filter(Boolean).join(' - ') || panelTitle;
 
@@ -413,13 +420,13 @@ function extractLabellessMultiSelects(csvRows) {
   });
 }
 
-// Ekstraksi tabel data (mis. daftar device di dalam Custom Class), yang tidak
-// berbentuk .form-group/.form-row melainkan <table> dengan thead + tbody.
+// Extraction for data tables (e.g. the device list inside a Custom Class), which
+// are not .form-group/.form-row but a <table> with thead + tbody.
 function extractDataTables(csvRows) {
   const tables = document.querySelectorAll('table');
 
   tables.forEach(table => {
-    if (table.offsetParent === null) return; // lewati tabel tersembunyi (mis. template modal)
+    if (table.offsetParent === null) return; // skip hidden tables (e.g. a modal template)
 
     const thead = table.querySelector('thead');
     const tbody = table.querySelector('tbody');
@@ -437,17 +444,17 @@ function extractDataTables(csvRows) {
       const cells = row.querySelectorAll('td');
       if (cells.length === 0) return;
 
-      // Gabungkan seluruh kolom baris ini menjadi satu record, bukan satu baris CSV per kolom.
+      // Combine every column of this row into a single record, instead of one CSV row per column.
       const pairs = [];
       cells.forEach((cell, cellIndex) => {
         const header = headers[cellIndex];
-        if (!header || header.toLowerCase() === 'actions') return; // lewati kolom checkbox/aksi
+        if (!header || header.toLowerCase() === 'actions') return; // skip the checkbox/actions column
         const value = readTableCellValue(cell);
         if (value) pairs.push({ header, value });
       });
       if (pairs.length === 0) return;
 
-      // Kolom yang paling layak dipakai sebagai pengenal baris (mis. Policy, Computer Name).
+      // The column best suited as the row identifier (e.g. Policy, Computer Name).
       const identifierPair = pickTableRowIdentifier(pairs);
       const identifier = identifierPair.value;
       const rest = pairs.filter(p => p !== identifierPair).map(p => `${p.header}: ${p.value}`).join(' | ');
@@ -502,7 +509,7 @@ function extractNetwrixFormConfig() {
 }
 
 function downloadCSV(csv, filename) {
-  // Tambahkan BOM UTF-8 agar Excel tidak salah baca non-breaking space sebagai mojibake
+  // Add a UTF-8 BOM so Excel doesn't misread non-breaking spaces as mojibake.
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
 
@@ -516,7 +523,7 @@ function downloadCSV(csv, filename) {
   document.body.removeChild(link);
 }
 
-// Jalankan fungsi ekstraksi utama
+// Run the main extraction function
 extractNetwrixFormConfig();
 
 })();
