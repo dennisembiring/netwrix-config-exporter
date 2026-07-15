@@ -66,16 +66,16 @@ function getRadioOptionText(radioEl) {
   return text;
 }
 
-function pushRow(csvRows, panelTitle, configName, configValue) {
+// Every extractor pushes plain {panel, name, value} records here instead of
+// pre-formatted CSV strings, so the same extracted data can be serialized to
+// CSV, Markdown, or PDF at the end without re-running extraction per format.
+function pushRow(rows, panelTitle, configName, configValue) {
   if (!configName || configValue === undefined || configValue === "") return;
-  let cleanPanel = panelTitle.replace(/"/g, '""');
-  let cleanName = configName.replace(/"/g, '""');
-  let cleanValue = configValue.toString().replace(/"/g, '""');
-  csvRows.push(`"${cleanPanel}","${cleanName}","${cleanValue}"`);
+  rows.push({ panel: panelTitle, name: configName, value: configValue.toString() });
 }
 
 // Extraction for Bootstrap-style UI: .panel-epp / .card-title / .form-group
-function extractBootstrapPanels(csvRows) {
+function extractBootstrapPanels(rows) {
   const panels = document.querySelectorAll('.panel-epp');
 
   panels.forEach(panel => {
@@ -106,7 +106,7 @@ function extractBootstrapPanels(csvRows) {
         const checkedRadio = Array.from(groupRadios).find(r => r.checked);
         const configName = groupName.replace(/\[\]$/, '').replace(/[_-]/g, ' ').trim();
         const configValue = checkedRadio ? (getRadioOptionText(checkedRadio) || checkedRadio.value) : "";
-        pushRow(csvRows, panelTitle, configName, configValue);
+        pushRow(rows, panelTitle, configName, configValue);
         return;
       }
 
@@ -138,13 +138,13 @@ function extractBootstrapPanels(csvRows) {
         configValue = textArea.value.trim();
       }
 
-      pushRow(csvRows, panelTitle, configName, configValue);
+      pushRow(rows, panelTitle, configName, configValue);
     });
   });
 }
 
 // Extraction for ExtJS-style UI: .x-panel / .x-panel-header / .form-row
-function extractExtJsPanels(csvRows) {
+function extractExtJsPanels(rows) {
   const panels = document.querySelectorAll('.x-panel');
 
   panels.forEach(panel => {
@@ -153,10 +153,10 @@ function extractExtJsPanels(csvRows) {
 
     // [class*="form-row"] also catches variants like .form-row-noborder-system-status
     // (the System Status page) in addition to the standard .form-row / .form-row-noborder.
-    const rows = panel.querySelectorAll('[class*="form-row"]');
+    const formRows = panel.querySelectorAll('[class*="form-row"]');
     const handledRadioNames = new Set();
 
-    rows.forEach(row => {
+    formRows.forEach(row => {
       if (row.offsetParent === null) return; // skip hidden fields
 
       const labelEl = row.querySelector('label');
@@ -172,7 +172,7 @@ function extractExtJsPanels(csvRows) {
         const checkedRadio = Array.from(groupRadios).find(r => r.checked);
         const configName = groupName.replace(/\[\]$/, '').replace(/[_-]/g, ' ').trim();
         const configValue = checkedRadio ? (getRadioOptionText(checkedRadio) || checkedRadio.value) : "";
-        pushRow(csvRows, panelTitle, configName, configValue);
+        pushRow(rows, panelTitle, configName, configValue);
         return;
       }
 
@@ -218,7 +218,7 @@ function extractExtJsPanels(csvRows) {
         if (contentEl) configValue = contentEl.innerText.trim();
       }
 
-      pushRow(csvRows, panelTitle, configName, configValue);
+      pushRow(rows, panelTitle, configName, configValue);
     });
   });
 }
@@ -226,7 +226,7 @@ function extractExtJsPanels(csvRows) {
 // Extraction for Device Rights lists (e.g. Global Rights): rows shaped as
 // .rights-list-view .row.new-line, not a regular .form-group. The label lives in
 // div.col-label (not .col-switch), the value in a <select> or checkbox toggle.
-function extractRightsListRows(csvRows) {
+function extractRightsListRows(rows) {
   const containers = document.querySelectorAll('.rights-list-view');
 
   containers.forEach(container => {
@@ -235,8 +235,8 @@ function extractRightsListRows(csvRows) {
     const mainTitleEl = document.getElementById('maincontenttitle');
     const panelTitle = panelTitleEl ? panelTitleEl.innerText.trim() : (mainTitleEl ? mainTitleEl.innerText.trim() : "General");
 
-    const rows = container.querySelectorAll('.row.new-line');
-    rows.forEach(row => {
+    const entityRows = container.querySelectorAll('.row.new-line');
+    entityRows.forEach(row => {
       if (row.offsetParent === null) return; // skip hidden fields
 
       const labelEl = row.querySelector('.col-label:not(.col-switch)');
@@ -254,7 +254,7 @@ function extractRightsListRows(csvRows) {
         if (checkbox) configValue = checkbox.checked ? "ON" : "OFF";
       }
 
-      pushRow(csvRows, panelTitle, configName, configValue);
+      pushRow(rows, panelTitle, configName, configValue);
     });
   });
 }
@@ -287,7 +287,7 @@ function readTableCellValue(cell) {
 // Extraction for policy cards (e.g. eDiscovery Policies, the card view of Content
 // Aware Policies): .epp-policy-box holds a title, priority, description, and an
 // ON/OFF status toggle.
-function extractPolicyCards(csvRows) {
+function extractPolicyCards(rows) {
   const boxes = document.querySelectorAll('.epp-policy-box');
 
   boxes.forEach(box => {
@@ -311,14 +311,14 @@ function extractPolicyCards(csvRows) {
     if (description) parts.push(`Description: ${description}`);
     if (status) parts.push(`Status: ${status}`);
 
-    pushRow(csvRows, panelTitle, title, parts.join(' | '));
+    pushRow(rows, panelTitle, title, parts.join(' | '));
   });
 }
 
 // Extraction for pseudo-checkbox lists (e.g. MIME Type on the Allowlists/Denylists
 // pages): .epp-pseudo-checkbox-group holds an <input type="checkbox"> + <label> as
 // siblings, not a checkbox nested inside the label like the regular .form-group pattern.
-function extractPseudoCheckboxGroups(csvRows) {
+function extractPseudoCheckboxGroups(rows) {
   const groups = document.querySelectorAll('.epp-pseudo-checkbox-group');
 
   groups.forEach(group => {
@@ -343,14 +343,14 @@ function extractPseudoCheckboxGroups(csvRows) {
     const parts = [panelTitleEl?.innerText.trim(), tabLabel, sectionHeading?.innerText.trim()].filter(Boolean);
     const category = parts.join(' - ') || 'General';
 
-    pushRow(csvRows, category, name, value);
+    pushRow(rows, category, name, value);
   });
 }
 
 // Extraction for the Content Detection rule summary (e.g. "X OR Y") on the Edit
 // Policy page: .cf_content_summary holds a <ul> of conditions that reads naturally
 // via innerText.
-function extractContentDetectionRules(csvRows) {
+function extractContentDetectionRules(rows) {
   const summaries = document.querySelectorAll('.cf_content_summary');
 
   summaries.forEach(summary => {
@@ -363,14 +363,14 @@ function extractContentDetectionRules(csvRows) {
     const panelTitleEl = panelEl && (panelEl.querySelector('.card-title') || panelEl.querySelector('.x-panel-header'));
     const panelTitle = panelTitleEl ? panelTitleEl.innerText.trim() : 'General';
 
-    pushRow(csvRows, panelTitle, 'Content Detection Rule', rule);
+    pushRow(rows, panelTitle, 'Content Detection Rule', rule);
   });
 }
 
 // Extraction for entity panels (e.g. Policy Entities: Departments/Groups/Computers/Users):
 // .epp-panel-entities holds a checkbox list per category; only checked items are
 // extracted (an empty list means "applies to everyone", nothing to record).
-function extractEntityLists(csvRows) {
+function extractEntityLists(rows) {
   const panels = document.querySelectorAll('.epp-panel-entities');
 
   panels.forEach(panel => {
@@ -388,7 +388,7 @@ function extractEntityLists(csvRows) {
     const parentTitleEl = parentPanelEl && (parentPanelEl.querySelector('.card-title') || parentPanelEl.querySelector('.x-panel-header'));
     const parentTitle = parentTitleEl ? parentTitleEl.innerText.trim() : 'General';
 
-    pushRow(csvRows, parentTitle, category, checkedLabels.join(', '));
+    pushRow(rows, parentTitle, category, checkedLabels.join(', '));
   });
 }
 
@@ -397,7 +397,7 @@ function extractEntityLists(csvRows) {
 // selected items are rendered by select2 as "(x) Name" chips, with no field label
 // at all. Since there is no label, this row is skipped by extractBootstrapPanels
 // and needs to be handled separately.
-function extractLabellessMultiSelects(csvRows) {
+function extractLabellessMultiSelects(rows) {
   const selects = document.querySelectorAll('select[multiple]');
 
   selects.forEach(select => {
@@ -416,13 +416,13 @@ function extractLabellessMultiSelects(csvRows) {
     const tabLabel = findTabLabelForElement(select);
     const category = [panelTitle, tabLabel].filter(Boolean).join(' - ') || panelTitle;
 
-    pushRow(csvRows, category, 'Selected Items', selectedOptions.join(', '));
+    pushRow(rows, category, 'Selected Items', selectedOptions.join(', '));
   });
 }
 
 // Extraction for data tables (e.g. the device list inside a Custom Class), which
 // are not .form-group/.form-row but a <table> with thead + tbody.
-function extractDataTables(csvRows) {
+function extractDataTables(rows) {
   const tables = document.querySelectorAll('table');
 
   tables.forEach(table => {
@@ -458,17 +458,44 @@ function extractDataTables(csvRows) {
       const identifierPair = pickTableRowIdentifier(pairs);
       const identifier = identifierPair.value;
       const rest = pairs.filter(p => p !== identifierPair).map(p => `${p.header}: ${p.value}`).join(' | ');
-      pushRow(csvRows, panelTitle, identifier, rest);
+      pushRow(rows, panelTitle, identifier, rest);
     });
   });
 }
 
-function extractNetwrixFormConfig() {
+// Some list pages (e.g. Devices, System Administrators) load their table data via
+// AJAX after the page shell renders. If extraction runs immediately after
+// navigation, the table may not exist yet, producing a false "nothing found"
+// result. Poll briefly for a recognizable panel/table before extracting, instead
+// of assuming a fixed navigation delay was long enough.
+function waitForPageReady(maxWaitMs, intervalMs) {
+  maxWaitMs = maxWaitMs || 4000;
+  intervalMs = intervalMs || 150;
+  return new Promise(resolve => {
+    const start = Date.now();
+    function check() {
+      const ready = document.querySelectorAll('.panel-epp').length > 0 ||
+        document.querySelectorAll('.x-panel').length > 0 ||
+        document.querySelectorAll('.rights-list-view').length > 0 ||
+        document.querySelectorAll('.epp-policy-box').length > 0 ||
+        Array.from(document.querySelectorAll('table')).some(t => t.offsetParent !== null && t.querySelector('tbody tr'));
+      if (ready || Date.now() - start >= maxWaitMs) {
+        resolve();
+      } else {
+        setTimeout(check, intervalMs);
+      }
+    }
+    check();
+  });
+}
+
+async function extractNetwrixFormConfig() {
+  await waitForPageReady();
+
   expandAllCollapsedPanels();
   expandAllTabs();
 
-  let csvRows = [];
-  csvRows.push('"Category/Panel","Configuration Name","Value/Status"');
+  let rows = [];
 
   const hasBootstrapPanels = document.querySelectorAll('.panel-epp').length > 0;
   const hasExtJsPanels = document.querySelectorAll('.x-panel').length > 0;
@@ -485,32 +512,77 @@ function extractNetwrixFormConfig() {
     return;
   }
 
-  if (hasBootstrapPanels) extractBootstrapPanels(csvRows);
-  if (hasExtJsPanels) extractExtJsPanels(csvRows);
-  if (hasRightsList) extractRightsListRows(csvRows);
-  if (hasPolicyCards) extractPolicyCards(csvRows);
-  if (hasPseudoCheckboxGroups) extractPseudoCheckboxGroups(csvRows);
-  if (hasContentDetectionRules) extractContentDetectionRules(csvRows);
-  if (hasEntityLists) extractEntityLists(csvRows);
-  if (hasLabellessMultiSelects) extractLabellessMultiSelects(csvRows);
-  if (hasDataTables) extractDataTables(csvRows);
+  if (hasBootstrapPanels) extractBootstrapPanels(rows);
+  if (hasExtJsPanels) extractExtJsPanels(rows);
+  if (hasRightsList) extractRightsListRows(rows);
+  if (hasPolicyCards) extractPolicyCards(rows);
+  if (hasPseudoCheckboxGroups) extractPseudoCheckboxGroups(rows);
+  if (hasContentDetectionRules) extractContentDetectionRules(rows);
+  if (hasEntityLists) extractEntityLists(rows);
+  if (hasLabellessMultiSelects) extractLabellessMultiSelects(rows);
+  if (hasDataTables) extractDataTables(rows);
 
-  if (csvRows.length <= 1) {
+  if (rows.length === 0) {
     alert("A configuration panel was found, but no fields could be extracted from this page.");
     return;
   }
 
-  const csvContent = csvRows.join("\n");
-
   const mainTitleEl = document.getElementById('maincontenttitle');
-  let pageTitle = mainTitleEl ? mainTitleEl.innerText.trim().toLowerCase().replace(/\s+/g, '_') : 'netwrix_config';
+  const pageTitle = mainTitleEl ? mainTitleEl.innerText.trim() : 'Netwrix Config';
+  const fileBaseName = pageTitle.toLowerCase().replace(/\s+/g, '_');
 
-  downloadCSV(csvContent, `${pageTitle}.csv`);
+  // popup.js sets window.__eppExportFormat before injecting this script; defaults
+  // to CSV when exported the old way (e.g. this file run directly without the popup).
+  const format = window.__eppExportFormat || 'csv';
+
+  if (format === 'md') {
+    downloadBlob(rowsToMarkdown(rows, pageTitle), `${fileBaseName}.md`, 'text/markdown;charset=utf-8;');
+  } else if (format === 'pdf') {
+    downloadPDF(rows, pageTitle, fileBaseName);
+  } else {
+    downloadBlob(rowsToCSV(rows), `${fileBaseName}.csv`, 'text/csv;charset=utf-8;');
+  }
 }
 
-function downloadCSV(csv, filename) {
-  // Add a UTF-8 BOM so Excel doesn't misread non-breaking spaces as mojibake.
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+function rowsToCSV(rows) {
+  const csvLines = ['"Category/Panel","Configuration Name","Value/Status"'];
+  rows.forEach(r => {
+    const panel = r.panel.replace(/"/g, '""');
+    const name = r.name.replace(/"/g, '""');
+    const value = r.value.replace(/"/g, '""');
+    csvLines.push(`"${panel}","${name}","${value}"`);
+  });
+  return csvLines.join('\n');
+}
+
+function rowsToMarkdown(rows, pageTitle) {
+  const groups = [];
+  const groupIndexByPanel = new Map();
+  rows.forEach(r => {
+    if (!groupIndexByPanel.has(r.panel)) {
+      groupIndexByPanel.set(r.panel, groups.length);
+      groups.push({ panel: r.panel, items: [] });
+    }
+    groups[groupIndexByPanel.get(r.panel)].items.push(r);
+  });
+
+  const escapeCell = s => s.replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
+
+  let md = `# ${pageTitle}\n\n`;
+  groups.forEach(g => {
+    md += `## ${g.panel}\n\n`;
+    md += '| Configuration Name | Value/Status |\n|---|---|\n';
+    g.items.forEach(r => {
+      md += `| ${escapeCell(r.name)} | ${escapeCell(r.value)} |\n`;
+    });
+    md += '\n';
+  });
+  return md;
+}
+
+function downloadBlob(content, filename, mimeType) {
+  // Add a UTF-8 BOM so Excel/other tools don't misread non-breaking spaces as mojibake.
+  const blob = new Blob(['\uFEFF' + content], { type: mimeType });
   const url = URL.createObjectURL(blob);
 
   const link = document.createElement("a");
@@ -521,6 +593,58 @@ function downloadCSV(csv, filename) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+function downloadPDF(rows, pageTitle, fileBaseName) {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert("PDF export failed: the PDF library did not load. Try again, or use CSV/Markdown instead.");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const marginLeft = 14;
+  const contentWidth = doc.internal.pageSize.getWidth() - marginLeft * 2;
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const lineHeight = 5;
+  let y = 18;
+
+  function ensureSpace(neededHeight) {
+    if (y + neededHeight > pageHeight - 14) {
+      doc.addPage();
+      y = 18;
+    }
+  }
+
+  doc.setFontSize(14);
+  doc.setFont(undefined, 'bold');
+  ensureSpace(lineHeight * 2);
+  doc.text(pageTitle, marginLeft, y);
+  y += lineHeight * 2;
+
+  let currentPanel = null;
+  rows.forEach(r => {
+    if (r.panel !== currentPanel) {
+      currentPanel = r.panel;
+      ensureSpace(lineHeight * 2);
+      y += 2;
+      doc.setFontSize(11);
+      doc.setFont(undefined, 'bold');
+      doc.text(currentPanel, marginLeft, y);
+      y += lineHeight;
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'normal');
+    }
+
+    const lines = doc.splitTextToSize(`${r.name}: ${r.value}`, contentWidth - 4);
+    ensureSpace(lines.length * lineHeight);
+    lines.forEach(line => {
+      doc.text(line, marginLeft + 4, y);
+      y += lineHeight;
+    });
+  });
+
+  doc.save(`${fileBaseName}.pdf`);
 }
 
 // Run the main extraction function

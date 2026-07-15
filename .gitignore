@@ -2,4 +2,7 @@
 .claude/
 *.csv
 *.xlsx
+*.pdf
+*.md
+!README.md
 node_modules/

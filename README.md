@@ -7,7 +7,8 @@ manually copy settings out of the UI.
 ## Features
 
 - One-click "Export Current Page" that reads whatever Netwrix EPP page is
-  open in the active tab and downloads a CSV.
+  open in the active tab and downloads it in your chosen format.
+- Export format choice: CSV, Markdown, or PDF.
 - Dedicated navigation buttons for ~50 common pages (Device Control, Content
   Aware Protection, Denylists and Allowlists, Reports and Analysis, Alerts,
   Directory Services, Appliance, System Maintenance, System Configuration,
@@ -17,6 +18,8 @@ manually copy settings out of the UI.
   pages (`.x-panel`) and the newer Bootstrap-based pages (`.panel-epp`).
 - Auto-expands collapsed accordion panels and inactive tabs before
   extracting, so a single export captures data you never manually opened.
+- Waits for AJAX-loaded tables (e.g. Devices, System Administrators) to
+  finish rendering before extracting, instead of assuming a fixed delay.
 - Skips password fields by design.
 - Built-in help page (accessible from the popup) with setup and usage
   instructions.
@@ -45,9 +48,10 @@ including known limitations.
 | File | Purpose |
 |---|---|
 | `manifest.json` | Extension manifest (Manifest V3) |
-| `content.js` | Injected into the Netwrix EPP page; does the actual DOM extraction and CSV download |
-| `popup.html` / `popup.js` | Extension popup UI: page navigation buttons and export triggers |
+| `content.js` | Injected into the Netwrix EPP page; does the DOM extraction and CSV/Markdown/PDF download |
+| `popup.html` / `popup.js` | Extension popup UI: format selector, page navigation buttons, export triggers |
 | `help.html` | In-extension user guide, opened from the popup |
+| `lib/jspdf.umd.min.js` | Bundled [jsPDF](https://github.com/parallax/jsPDF) library (MIT license), used for PDF export |
 
 ## Known limitations
 
@@ -61,6 +65,5 @@ including known limitations.
 
 ## Roadmap
 
-- Export format choice: CSV / PDF / Markdown.
 - Dashboard export to PNG (General Dashboard, Device Control Dashboard,
   Content Aware Dashboard) with a user-selected time range.

@@ -2,17 +2,38 @@ function setStatus(text) {
   document.getElementById('status').textContent = text;
 }
 
-async function runExtraction(tabId) {
+function getSelectedFormat() {
+  const checked = document.querySelector('input[name="format"]:checked');
+  return checked ? checked.value : 'csv';
+}
+
+// Runs inside the Netwrix EPP page (not the popup). Sets a flag content.js reads
+// to decide which format to export in. Must be self-contained (no outside
+// references) since it is sent to chrome.scripting.executeScript as a function,
+// not a separate file.
+function setExportFormat(format) {
+  window.__eppExportFormat = format;
+}
+
+async function runExtraction(tabId, format) {
   await chrome.scripting.executeScript({
     target: { tabId },
-    files: ['content.js']
+    func: setExportFormat,
+    args: [format]
+  });
+
+  // Only load the (large) PDF library when the user actually asked for a PDF.
+  const files = format === 'pdf' ? ['lib/jspdf.umd.min.js', 'content.js'] : ['content.js'];
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files
   });
 }
 
-// Dijalankan di dalam halaman Netwrix EPP (bukan di popup). Mengklik item sidebar
-// secara berurutan (mis. "Device Control" lalu "Global Rights") untuk berpindah
-// halaman sebelum ekspor dijalankan. Harus mandiri (tanpa referensi luar) karena
-// dikirim ke chrome.scripting.executeScript sebagai fungsi, bukan file terpisah.
+// Runs inside the Netwrix EPP page (not the popup). Clicks through sidebar items
+// in order (e.g. "Device Control" then "Global Rights") to navigate before export
+// runs. Must be self-contained (no outside references) since it is sent to
+// chrome.scripting.executeScript as a function, not a separate file.
 function navigateToPath(labels) {
   return new Promise(async (resolve) => {
     for (const label of labels) {
@@ -30,7 +51,7 @@ function navigateToPath(labels) {
 document.getElementById('exportCurrentBtn').addEventListener('click', async () => {
   setStatus('Exporting current page...');
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  await runExtraction(tab.id);
+  await runExtraction(tab.id, getSelectedFormat());
   setStatus('Done.');
 });
 
@@ -52,7 +73,7 @@ document.querySelectorAll('.navExport').forEach(button => {
     });
 
     setStatus('Exporting...');
-    await runExtraction(tab.id);
+    await runExtraction(tab.id, getSelectedFormat());
     setStatus('Done.');
   });
 });

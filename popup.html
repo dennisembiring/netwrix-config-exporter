@@ -10,11 +10,19 @@
     button { width: 100%; padding: 6px; cursor: pointer; margin-bottom: 3px; text-align: left; font-size: 12px; }
     #exportCurrentBtn { font-weight: bold; font-size: 13px; padding: 8px; }
     #status { font-size: 11px; color: #666; margin: 6px 10px; min-height: 14px; }
+    .format-row { display: flex; gap: 6px; margin: 8px 0; }
+    .format-row label { display: flex; align-items: center; gap: 3px; font-size: 12px; cursor: pointer; }
+    .format-row input { margin: 0; }
   </style>
 </head>
 <body>
   <div class="header-bar">
     <h4>Config Exporter <a href="#" id="helpLink" style="font-size:11px; font-weight:normal; float:right;">Help</a></h4>
+    <div class="format-row">
+      <label><input type="radio" name="format" value="csv" checked> CSV</label>
+      <label><input type="radio" name="format" value="md"> Markdown</label>
+      <label><input type="radio" name="format" value="pdf"> PDF</label>
+    </div>
     <button id="exportCurrentBtn">Export Current Page</button>
   </div>
 
