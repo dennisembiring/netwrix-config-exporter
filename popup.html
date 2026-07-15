@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { width: 280px; padding: 10px; font-family: sans-serif; margin: 0; }
+    .header-bar { padding: 0 10px; }
+    h4 { margin: 0 0 8px 0; }
+    .scroll-area { max-height: 480px; overflow-y: auto; padding: 0 10px; }
+    .group-label { font-size: 11px; color: #666; margin: 10px 0 4px 0; text-transform: uppercase; }
+    button { width: 100%; padding: 6px; cursor: pointer; margin-bottom: 3px; text-align: left; font-size: 12px; }
+    #exportCurrentBtn { font-weight: bold; font-size: 13px; padding: 8px; }
+    #status { font-size: 11px; color: #666; margin: 6px 10px; min-height: 14px; }
+  </style>
+</head>
+<body>
+  <div class="header-bar">
+    <h4>Config Exporter <a href="#" id="helpLink" style="font-size:11px; font-weight:normal; float:right;">Help</a></h4>
+    <button id="exportCurrentBtn">Export Current Page</button>
+  </div>
+
+  <div class="scroll-area">
+    <div class="group-label">Dashboard</div>
+    <button class="navExport" data-path="Dashboard,System Status">System Status</button>
+    <button class="navExport" data-path="Dashboard,Effective Rights">Effective Rights</button>
+
+    <div class="group-label">Device Control</div>
+    <button class="navExport" data-path="Device Control,Devices">Devices</button>
+    <button class="navExport" data-path="Device Control,Users">Users</button>
+    <button class="navExport" data-path="Device Control,Groups">Groups</button>
+    <button class="navExport" data-path="Device Control,Global Rights">Global Rights</button>
+    <button class="navExport" data-path="Device Control,Global Settings">Global Settings</button>
+
+    <div class="group-label">Content Aware Protection</div>
+    <button class="navExport" data-path="Content Aware Protection,Content Aware Policies">Content Aware Policies (List)</button>
+    <button class="navExport" data-path="Content Aware Protection,Deep Packet Inspection">Deep Packet Inspection</button>
+
+    <div class="group-label">eDiscovery</div>
+    <button class="navExport" data-path="eDiscovery,Policies and Scans">Policies and Scans</button>
+
+    <div class="group-label">Denylists and Allowlists</div>
+    <button class="navExport" data-path="Denylists and Allowlists,Denylists">Denylists</button>
+    <button class="navExport" data-path="Denylists and Allowlists,Allowlists">Allowlists</button>
+    <button class="navExport" data-path="Denylists and Allowlists,URL Categories">URL Categories</button>
+
+    <div class="group-label">Enforced Encryption</div>
+    <button class="navExport" data-path="Enforced Encryption,EasyLock">EasyLock</button>
+
+    <div class="group-label">Offline Temporary Password</div>
+    <button class="navExport" data-path="Offline Temporary Password,Offline Temporary Password">Offline Temporary Password</button>
+    <button class="navExport" data-path="Offline Temporary Password,Offline Temporary Password List">OTP List</button>
+
+    <div class="group-label">Reports and Analysis</div>
+    <button class="navExport" data-path="Reports and Analysis,Logs Report">Logs Report</button>
+    <button class="navExport" data-path="Reports and Analysis,File Tracing">File Tracing</button>
+    <button class="navExport" data-path="Reports and Analysis,Content Aware Report">Content Aware Report</button>
+    <button class="navExport" data-path="Reports and Analysis,Admin Actions">Admin Actions</button>
+    <button class="navExport" data-path="Reports and Analysis,SCIM Provisioning Logs">SCIM Provisioning Logs</button>
+    <button class="navExport" data-path="Reports and Analysis,Online Computers">Online Computers</button>
+    <button class="navExport" data-path="Reports and Analysis,Online Users">Online Users</button>
+    <button class="navExport" data-path="Reports and Analysis,Online Devices">Online Devices</button>
+    <button class="navExport" data-path="Reports and Analysis,Statistics">Statistics</button>
+
+    <div class="group-label">Alerts</div>
+    <button class="navExport" data-path="Alerts,System Alerts">System Alerts</button>
+    <button class="navExport" data-path="Alerts,Device Control Alerts">Device Control Alerts</button>
+    <button class="navExport" data-path="Alerts,Content Aware Alerts">Content Aware Alerts</button>
+    <button class="navExport" data-path="Alerts,EasyLock Alerts">EasyLock Alerts</button>
+
+    <div class="group-label">Directory Services</div>
+    <button class="navExport" data-path="Directory Services,Microsoft Active Directory">Microsoft Active Directory</button>
+    <button class="navExport" data-path="Directory Services,Azure Active Directory">Azure Active Directory</button>
+    <button class="navExport" data-path="Directory Services,SCIM API Configuration">SCIM API Configuration</button>
+
+    <div class="group-label">Appliance</div>
+    <button class="navExport" data-path="Appliance,Server Information">Server Information</button>
+    <button class="navExport" data-path="Appliance,Server Maintenance">Server Maintenance</button>
+    <button class="navExport" data-path="Appliance,SIEM Integration">SIEM Integrations</button>
+
+    <div class="group-label">System Maintenance</div>
+    <button class="navExport" data-path="System Maintenance,Exported Entities">Exported Entities</button>
+    <button class="navExport" data-path="System Maintenance,System Snapshots">System Snapshots</button>
+    <button class="navExport" data-path="System Maintenance,Audit Log Backup">Audit Log Backup</button>
+    <button class="navExport" data-path="System Maintenance,External Storage">External Storage</button>
+    <button class="navExport" data-path="System Maintenance,System Backup">System Backup</button>
+    <button class="navExport" data-path="System Maintenance,File Shadows Repository">File Shadows Repository</button>
+    <button class="navExport" data-path="System Maintenance,EPP Clients Migration">EPP Clients Migration</button>
+
+    <div class="group-label">System Configuration</div>
+    <button class="navExport" data-path="System Configuration,Server Update">Server Update</button>
+    <button class="navExport" data-path="System Configuration,Client Software">Client Software</button>
+    <button class="navExport" data-path="System Configuration,Client Software Upgrade">Client Software Upgrade</button>
+    <button class="navExport" data-path="System Configuration,Client Uninstall">Client Uninstall</button>
+    <button class="navExport" data-path="System Configuration,System Administrators">System Administrators</button>
+    <button class="navExport" data-path="System Configuration,Administrators Groups">Administrators Groups</button>
+    <button class="navExport" data-path="System Configuration,System Departments">System Departments</button>
+    <button class="navExport" data-path="System Configuration,System Settings">System Settings</button>
+    <button class="navExport" data-path="System Configuration,System Security">System Security</button>
+    <button class="navExport" data-path="System Configuration,Mail Settings">Mail Settings</button>
+
+    <div class="group-label">System Parameters</div>
+    <button class="navExport" data-path="System Parameters,Device Types and Notifications">Device Types and Notifications</button>
+    <button class="navExport" data-path="System Parameters,Contextual Detection">Contextual Detection</button>
+    <button class="navExport" data-path="System Parameters,Advanced Scanning Exceptions">Advanced Scanning Exceptions</button>
+    <button class="navExport" data-path="System Parameters,Rights">Rights</button>
+    <button class="navExport" data-path="System Parameters,Events">Events</button>
+  </div>
+
+  <div id="status"></div>
+  <script src="popup.js"></script>
+</body>
+</html>

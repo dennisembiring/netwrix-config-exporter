@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Config Exporter - Help</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #222; }
+    h1 { font-size: 22px; border-bottom: 2px solid #333; padding-bottom: 8px; }
+    h2 { font-size: 17px; margin-top: 32px; }
+    code { background: #f2f2f2; padding: 2px 5px; border-radius: 3px; font-size: 13px; }
+    ul, ol { padding-left: 22px; }
+    li { margin-bottom: 6px; }
+    .box { background: #f7f7f7; border-left: 4px solid #6c63ff; padding: 12px 16px; margin: 16px 0; border-radius: 4px; }
+    .warn { background: #fff8e6; border-left: 4px solid #d9a600; padding: 12px 16px; margin: 16px 0; border-radius: 4px; }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13px; }
+    th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; }
+    th { background: #f2f2f2; }
+  </style>
+</head>
+<body>
+  <h1>Netwrix Config Exporter - Help</h1>
+  <p>This extension exports configuration data from your Netwrix Endpoint Protector admin console to CSV, so you don't have to manually copy settings out of the UI.</p>
+
+  <h2>1. First-time setup</h2>
+  <ol>
+    <li>Open <code>chrome://extensions</code> in Chrome.</li>
+    <li>Turn on <strong>Developer mode</strong> (top-right toggle).</li>
+    <li>Click <strong>Load unpacked</strong> and select the extension's folder.</li>
+    <li>Confirm it appears as "Netwrix Config Exporter" with no errors.</li>
+  </ol>
+
+  <h2>2. Two ways to export</h2>
+  <table>
+    <tr><th>Button</th><th>What it does</th></tr>
+    <tr><td><strong>Export Current Page</strong></td><td>Exports whatever page is currently open in the active tab - use this for pages not listed below, or for an individual item's detail/edit screen (e.g. one specific Content Aware Policy).</td></tr>
+    <tr><td>Section buttons (e.g. <em>Global Rights</em>, <em>Mail Settings</em>)</td><td>Automatically navigates to that page for you first, then exports it. One click instead of clicking through the sidebar yourself.</td></tr>
+  </table>
+
+  <h2>3. Using it</h2>
+  <ol>
+    <li>Open your Netwrix EPP admin console in a browser tab and make sure it's the <strong>active tab</strong>.</li>
+    <li>Click the extension icon in the toolbar to open this popup.</li>
+    <li>Click a section button, or navigate to a page yourself and click <strong>Export Current Page</strong>.</li>
+    <li>A CSV file downloads automatically - check your browser's Downloads folder.</li>
+  </ol>
+
+  <div class="box">
+    <strong>What's in the CSV:</strong> three columns - <code>Category/Panel</code>, <code>Configuration Name</code>, <code>Value/Status</code>. Each row is one setting, checkbox, dropdown, or table record found on the page.
+  </div>
+
+  <h2>4. Scope and limitations</h2>
+  <ul>
+    <li><strong>List pages export summaries, not full detail.</strong> For example, "Content Aware Policies (List)" exports the policy names/status/priority table - not each policy's full rule configuration. To get one policy's full detail, open that policy's Edit page manually, then use <strong>Export Current Page</strong>.</li>
+    <li><strong>The extension cannot auto-open individual rows.</strong> Opening a specific item (like one policy, one custom class) requires a real click from you - the app doesn't respond to script-simulated clicks on its row-action menus. Section buttons only work for pages reachable directly from the main sidebar.</li>
+    <li><strong>Password fields are never exported</strong>, by design - for security.</li>
+    <li><strong>Collapsed panels and inactive tabs are automatically expanded</strong> before export, so you'll get their data even if you never manually opened them (e.g. all tabs under Policy Denylists/Allowlists on a policy edit page).</li>
+    <li>If a page has genuinely no data (e.g. no alerts configured), the export will simply have fewer or zero rows for that section - that's correct, not a bug.</li>
+  </ul>
+
+  <h2>5. Troubleshooting</h2>
+  <div class="warn">
+    <strong>Nothing happens when I click a button:</strong> Make sure a Netwrix EPP tab is the currently active tab before clicking the extension icon. The extension always acts on your active browser tab.
+  </div>
+  <div class="warn">
+    <strong>Export stops working after the first click:</strong> This was a known bug (script re-injection colliding on Netwrix's single-page app navigation) that has been fixed. If you still see this, reload the extension in <code>chrome://extensions</code>.
+  </div>
+  <div class="warn">
+    <strong>A page you need isn't in the menu:</strong> Navigate to it manually in Netwrix EPP, then click <strong>Export Current Page</strong> in the popup - this works on any page, listed or not.
+  </div>
+
+  <h2>6. Adding more pages to the menu</h2>
+  <p>The section buttons are defined in <code>popup.html</code> as <code>data-path="Sidebar Item,Sub Item"</code> - a comma-separated list of sidebar labels to click through in order. If you want a new page added, note its exact sidebar path and it can be added the same way.</p>
+
+</body>
+</html>

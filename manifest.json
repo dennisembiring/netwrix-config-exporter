@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Netwrix Config Exporter",
+  "version": "1.0",
+  "description": "Exports configuration data from Netwrix Endpoint Protector.",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
