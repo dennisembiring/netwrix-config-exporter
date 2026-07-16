@@ -422,6 +422,13 @@ function extractLabellessMultiSelects(rows) {
 
 // Extraction for data tables (e.g. the device list inside a Custom Class), which
 // are not .form-group/.form-row but a <table> with thead + tbody.
+//
+// Each pushed row keeps both a flattened "identifier + rest" name/value pair
+// (used by the CSV/Markdown output, one row per record) AND the original
+// fixed-column record under `.table` (headers + per-column values, blanks
+// kept so every row lines up under the same columns). The PDF renderer uses
+// `.table` to draw a real multi-column table instead of squashing every
+// column into a single "Value/Status" cell.
 function extractDataTables(rows) {
   const tables = document.querySelectorAll('table');
 
@@ -432,8 +439,15 @@ function extractDataTables(rows) {
     const tbody = table.querySelector('tbody');
     if (!thead || !tbody) return;
 
-    const headers = Array.from(thead.querySelectorAll('th')).map(th => th.innerText.trim());
-    if (headers.every(h => !h)) return;
+    const rawHeaders = Array.from(thead.querySelectorAll('th')).map(th => th.innerText.trim());
+    if (rawHeaders.every(h => !h)) return;
+
+    // Column indexes worth keeping: has a header, and isn't the checkbox/actions column.
+    const keptColumns = rawHeaders
+      .map((header, index) => ({ header, index }))
+      .filter(c => c.header && c.header.toLowerCase() !== 'actions');
+    if (keptColumns.length === 0) return;
+    const headers = keptColumns.map(c => c.header);
 
     const panelEl = table.closest('.panel-epp, .x-panel');
     const panelTitleEl = panelEl && (panelEl.querySelector('.card-title') || panelEl.querySelector('.x-panel-header'));
@@ -444,21 +458,22 @@ function extractDataTables(rows) {
       const cells = row.querySelectorAll('td');
       if (cells.length === 0) return;
 
-      // Combine every column of this row into a single record, instead of one CSV row per column.
-      const pairs = [];
-      cells.forEach((cell, cellIndex) => {
-        const header = headers[cellIndex];
-        if (!header || header.toLowerCase() === 'actions') return; // skip the checkbox/actions column
-        const value = readTableCellValue(cell);
-        if (value) pairs.push({ header, value });
+      const values = keptColumns.map(c => {
+        const cell = cells[c.index];
+        return cell ? readTableCellValue(cell) : '';
       });
+      if (values.every(v => !v)) return;
+
+      const pairs = headers.map((header, i) => ({ header, value: values[i] })).filter(p => p.value);
       if (pairs.length === 0) return;
 
       // The column best suited as the row identifier (e.g. Policy, Computer Name).
       const identifierPair = pickTableRowIdentifier(pairs);
       const identifier = identifierPair.value;
       const rest = pairs.filter(p => p !== identifierPair).map(p => `${p.header}: ${p.value}`).join(' | ');
-      pushRow(rows, panelTitle, identifier, rest);
+      if (!identifier) return;
+
+      rows.push({ panel: panelTitle, name: identifier, value: rest || '(no additional fields)', table: { headers, values } });
     });
   });
 }
@@ -629,44 +644,198 @@ function downloadPDF(rows, pageTitle, fileBaseName) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const marginLeft = 14;
-  const contentWidth = doc.internal.pageSize.getWidth() - marginLeft * 2;
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const lineHeight = 5;
+  const bottomMargin = 14;
+  const cellPadding = 2;
+  const headerRowHeight = 7;
+  let orientation = 'portrait';
   let y = 18;
 
+  function pageDims() {
+    return { w: doc.internal.pageSize.getWidth(), h: doc.internal.pageSize.getHeight() };
+  }
+
+  function newPage(targetOrientation) {
+    doc.addPage('a4', targetOrientation);
+    orientation = targetOrientation;
+    y = 18;
+  }
+
+  // Returns true if a new page was started, so the caller can redraw the table header.
   function ensureSpace(neededHeight) {
-    if (y + neededHeight > pageHeight - 14) {
-      doc.addPage();
-      y = 18;
+    const { h } = pageDims();
+    if (y + neededHeight > h - bottomMargin) {
+      newPage(orientation);
+      return true;
     }
+    return false;
+  }
+
+  function ensureOrientation(target) {
+    if (orientation !== target) newPage(target);
   }
 
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
-  ensureSpace(lineHeight * 2);
   doc.text(pageTitle, marginLeft, y);
-  y += lineHeight * 2;
+  y += 10;
 
-  let currentPanel = null;
+  const groups = [];
+  const groupIndexByPanel = new Map();
   rows.forEach(r => {
-    if (r.panel !== currentPanel) {
-      currentPanel = r.panel;
-      ensureSpace(lineHeight * 2);
-      y += 2;
-      doc.setFontSize(11);
+    if (!groupIndexByPanel.has(r.panel)) {
+      groupIndexByPanel.set(r.panel, groups.length);
+      groups.push({ panel: r.panel, items: [] });
+    }
+    groups[groupIndexByPanel.get(r.panel)].items.push(r);
+  });
+
+  // A group renders as a real multi-column table only if every item in it came
+  // from the same source <table> (same columns in the same order); otherwise it
+  // falls back to the generic 2-column "Configuration Name / Value/Status" layout.
+  function isDataTableGroup(g) {
+    if (g.items.length === 0 || !g.items[0].table) return false;
+    const headers = g.items[0].table.headers;
+    return g.items.every(i => i.table && i.table.headers.length === headers.length &&
+      i.table.headers.every((h, idx) => h === headers[idx]));
+  }
+
+  function drawFieldGroup(g) {
+    const { w } = pageDims();
+    const contentWidth = w - marginLeft * 2;
+    const col1Width = contentWidth * 0.35;
+    const col2Width = contentWidth - col1Width;
+    const textLineHeight = 4.5;
+
+    function drawHeader() {
+      doc.setDrawColor(150);
+      doc.setFillColor(230, 230, 230);
+      doc.rect(marginLeft, y, col1Width, headerRowHeight, 'FD');
+      doc.rect(marginLeft + col1Width, y, col2Width, headerRowHeight, 'FD');
       doc.setFont(undefined, 'bold');
-      doc.text(currentPanel, marginLeft, y);
-      y += lineHeight;
       doc.setFontSize(9);
-      doc.setFont(undefined, 'normal');
+      doc.setTextColor(0, 0, 0);
+      doc.text('Configuration Name', marginLeft + cellPadding, y + 5);
+      doc.text('Value/Status', marginLeft + col1Width + cellPadding, y + 5);
+      y += headerRowHeight;
     }
 
-    const lines = doc.splitTextToSize(`${r.name}: ${r.value}`, contentWidth - 4);
-    ensureSpace(lines.length * lineHeight);
-    lines.forEach(line => {
-      doc.text(line, marginLeft + 4, y);
-      y += lineHeight;
+    ensureSpace(headerRowHeight + textLineHeight + 6);
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.text(g.panel, marginLeft, y);
+    y += 5;
+    drawHeader();
+
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(9);
+
+    g.items.forEach(item => {
+      const nameLines = doc.splitTextToSize(item.name, col1Width - cellPadding * 2);
+      const valueLines = doc.splitTextToSize(item.value, col2Width - cellPadding * 2);
+      const lineCount = Math.max(nameLines.length, valueLines.length, 1);
+      const rowHeight = lineCount * textLineHeight + cellPadding * 2 - 1;
+
+      if (ensureSpace(rowHeight)) {
+        drawHeader();
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(9);
+      }
+
+      doc.setDrawColor(200);
+      doc.rect(marginLeft, y, col1Width, rowHeight);
+      doc.rect(marginLeft + col1Width, y, col2Width, rowHeight);
+
+      let ly = y + cellPadding + 2;
+      nameLines.forEach(line => { doc.text(line, marginLeft + cellPadding, ly); ly += textLineHeight; });
+      ly = y + cellPadding + 2;
+      valueLines.forEach(line => { doc.text(line, marginLeft + col1Width + cellPadding, ly); ly += textLineHeight; });
+
+      y += rowHeight;
     });
+
+    y += 6;
+  }
+
+  // Renders the table's original columns (Username, First Name, E-mail, ...)
+  // instead of the flattened "identifier + rest" pair, so it actually looks
+  // like the source data table. Wide tables (more than 5 columns) switch the
+  // page to landscape so columns stay readable.
+  function drawDataTableGroup(g) {
+    const headers = g.items[0].table.headers;
+    ensureOrientation(headers.length > 5 ? 'landscape' : 'portrait');
+
+    const { w } = pageDims();
+    const contentWidth = w - marginLeft * 2;
+
+    const colWeights = headers.map((h, i) => {
+      let maxLen = h.length;
+      g.items.forEach(item => { maxLen = Math.max(maxLen, (item.table.values[i] || '').length); });
+      return Math.min(Math.max(maxLen, 6), 30);
+    });
+    const totalWeight = colWeights.reduce((a, b) => a + b, 0);
+    const colWidths = colWeights.map(wt => (wt / totalWeight) * contentWidth);
+
+    const fontSize = headers.length > 8 ? 6.5 : 8;
+    const rowLineHeight = fontSize * 0.55 + 1.2;
+
+    function drawHeader() {
+      doc.setFont(undefined, 'bold');
+      doc.setFontSize(fontSize);
+      let x = marginLeft;
+      headers.forEach((h, i) => {
+        // Fill color must be reasserted before every rect: drawing text uses the
+        // same underlying PDF fill-color state, so the previous column's text
+        // silently leaves it black for this column's rect otherwise.
+        doc.setDrawColor(150);
+        doc.setFillColor(230, 230, 230);
+        doc.rect(x, y, colWidths[i], headerRowHeight, 'FD');
+        doc.setTextColor(0, 0, 0);
+        const lines = doc.splitTextToSize(h, colWidths[i] - cellPadding * 2);
+        doc.text(lines[0] || '', x + cellPadding, y + 5);
+        x += colWidths[i];
+      });
+      y += headerRowHeight;
+    }
+
+    ensureSpace(headerRowHeight + rowLineHeight + 6);
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.text(g.panel, marginLeft, y);
+    y += 5;
+    drawHeader();
+
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(fontSize);
+
+    g.items.forEach(item => {
+      const cellLines = headers.map((h, i) => doc.splitTextToSize(item.table.values[i] || '', colWidths[i] - cellPadding * 2));
+      const lineCount = Math.max(1, ...cellLines.map(l => l.length));
+      const rowHeight = lineCount * rowLineHeight + cellPadding * 1.5;
+
+      if (ensureSpace(rowHeight)) {
+        drawHeader();
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(fontSize);
+      }
+
+      let x = marginLeft;
+      doc.setDrawColor(200);
+      headers.forEach((h, i) => {
+        doc.rect(x, y, colWidths[i], rowHeight);
+        let ly = y + cellPadding + rowLineHeight - 1;
+        cellLines[i].forEach(line => { doc.text(line, x + cellPadding, ly); ly += rowLineHeight; });
+        x += colWidths[i];
+      });
+
+      y += rowHeight;
+    });
+
+    y += 6;
+  }
+
+  groups.forEach(g => {
+    if (isDataTableGroup(g)) drawDataTableGroup(g);
+    else drawFieldGroup(g);
   });
 
   doc.save(`${fileBaseName}.pdf`);
