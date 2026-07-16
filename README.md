@@ -69,5 +69,4 @@ including known limitations.
   only cover pages reachable directly from the main sidebar.
 - Dashboard PNG export requires the `debugger` permission, so Chrome shows a
   "started debugging this browser" infobar for the few seconds an export
-  takes. It captures the visible tab only (not the full scrollable page), so
-  the PNG shows whatever fits in the current window.
+  takes.

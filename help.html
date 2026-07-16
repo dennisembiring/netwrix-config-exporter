@@ -41,7 +41,7 @@
   <div class="box">
     <strong>Why this needs the "debugger" permission:</strong> the dashboard's date-range picker only responds to genuinely trusted mouse clicks - a script-simulated click is silently ignored. The only way an extension can generate a trusted-equivalent click is via <code>chrome.debugger</code>, the same mechanism browser-automation tools use. While a PNG export runs (a few seconds), Chrome shows a "started debugging this browser" infobar - this is normal and expected.
   </div>
-  <p>The PNG captures the visible browser tab, not the full scrollable page - if content is cut off, maximize the window or zoom out before exporting.</p>
+  <p>The PNG captures the full scrollable dashboard, not just the visible viewport.</p>
 
   <h2>4. Using the CSV/Markdown/PDF export</h2>
   <ol>

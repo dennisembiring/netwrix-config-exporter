@@ -156,9 +156,18 @@ async function setDashboardStartDate(tabId, targetDate) {
   }
 }
 
+// chrome.tabs.captureVisibleTab only captures the current viewport, cutting
+// off dashboards taller than the window. Since the debugger is already
+// attached for the date-picker automation, use CDP's own screenshot command
+// instead, which can capture the full scrollable page in one shot.
 async function capturePng(tabId) {
-  const tab = await chrome.tabs.get(tabId);
-  return chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
+  const { cssContentSize } = await chrome.debugger.sendCommand({ tabId }, 'Page.getLayoutMetrics');
+  const { data } = await chrome.debugger.sendCommand({ tabId }, 'Page.captureScreenshot', {
+    format: 'png',
+    captureBeyondViewport: true,
+    clip: { x: 0, y: 0, width: cssContentSize.width, height: cssContentSize.height, scale: 1 },
+  });
+  return `data:image/png;base64,${data}`;
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
