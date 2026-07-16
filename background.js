@@ -42,8 +42,14 @@ function pageGetStartDateInputCenter() {
 }
 
 function pageReadCalendarState(targetDay) {
-  const picker = document.querySelector('.datetimepicker-days');
-  if (!picker) return null;
+  // There can be two .datetimepicker-days elements in the DOM (one per date
+  // input on the dashboard), but only one is actually open/visible at a time.
+  // Picking the wrong one silently clicks an invisible calendar that never
+  // changes what's on screen, which looked like "next never advances the month".
+  const pickers = Array.from(document.querySelectorAll('.datetimepicker-days'))
+    .filter(el => el.offsetParent !== null);
+  const picker = pickers[0];
+  if (!picker) return { pickerCount: pickers.length };
   const centerOf = (el) => {
     if (!el) return null;
     const r = el.getBoundingClientRect();
@@ -53,6 +59,7 @@ function pageReadCalendarState(targetDay) {
   const dayCell = Array.from(picker.querySelectorAll('td.day:not(.old):not(.new)'))
     .find(td => parseInt(td.textContent.trim(), 10) === targetDay);
   return {
+    pickerCount: pickers.length,
     headerText: header ? header.textContent.trim() : null,
     prev: centerOf(picker.querySelector('.prev')),
     next: centerOf(picker.querySelector('.next')),
@@ -93,11 +100,11 @@ async function setDashboardStartDate(tabId, targetDate) {
   for (let attempt = 0; attempt <= maxNavigationClicks; attempt++) {
     const state = await runInPage(tabId, pageReadCalendarState, [targetDay]);
     if (!state || !state.headerText) {
-      throw new Error(`Calendar did not open. History: ${JSON.stringify(history)}`);
+      throw new Error(`Calendar did not open (visible picker count: ${state ? state.pickerCount : 'n/a'}). History: ${JSON.stringify(history)}`);
     }
     const { month, year } = parseCalendarHeader(state.headerText);
     const diff = (targetYear - year) * 12 + (targetMonth - month);
-    history.push({ headerText: state.headerText, parsedMonth: month, parsedYear: year, diff, hasDay: !!state.day, hasPrev: !!state.prev, hasNext: !!state.next });
+    history.push({ pickerCount: state.pickerCount, headerText: state.headerText, parsedMonth: month, parsedYear: year, diff, hasDay: !!state.day, hasPrev: !!state.prev, hasNext: !!state.next, next: state.next });
 
     if (diff === 0) {
       if (!state.day) {
