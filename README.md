@@ -58,11 +58,13 @@ of available buttons and known limitations.
 
 ## Example exports
 
-Examples below use placeholder sample data, not real configuration.
+Examples below are from the System Parameters > Events export, which lists
+Netwrix's built-in event type definitions - no environment-specific or
+sensitive data.
 
 | CSV | Markdown | PDF |
 |---|---|---|
-| ![CSV export example](docs/screenshots/csv-export-example.png) | ![Markdown export example](docs/screenshots/md-export-example.png) | ![PDF export example](docs/screenshots/pdf-export-example.png) |
+| ![CSV export example](docs/screenshots/csv.png) | ![Markdown export example](docs/screenshots/md.png) | ![PDF export example](docs/screenshots/pdf.png) |
 
 ## Files
 
@@ -74,7 +76,7 @@ Examples below use placeholder sample data, not real configuration.
 | `background.js` | Service worker; drives the dashboard date-range picker via `chrome.debugger` and captures/downloads the PNG |
 | `help.html` | In-extension user guide, opened from the popup |
 | `lib/jspdf.umd.min.js` | Bundled [jsPDF](https://github.com/parallax/jsPDF) library (MIT license), used for PDF export |
-| `docs/screenshots/` | Example export screenshots used in this README and help.html (sample data only) |
+| `docs/screenshots/` | Example export screenshots used in this README and help.html |
 
 ## Known limitations
 
