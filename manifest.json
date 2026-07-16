@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Netwrix Config Exporter",
+  "name": "Netwrix Endpoint Protector Configuration Exporter",
   "version": "1.0",
   "description": "Exports configuration data from Netwrix Endpoint Protector.",
   "permissions": [

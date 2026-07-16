@@ -1,4 +1,4 @@
-# Netwrix Config Exporter
+# Netwrix Endpoint Protector Configuration Exporter
 
 A Chrome extension (Manifest V3) that exports configuration data from a
 Netwrix Endpoint Protector (EPP) admin console to CSV, Markdown, or PDF, and
@@ -41,7 +41,7 @@ the UI.
 1. Open `chrome://extensions` in Chrome.
 2. Turn on **Developer mode** (top-right toggle).
 3. Click **Load unpacked** and select this folder.
-4. Confirm it appears as "Netwrix Config Exporter" with no errors.
+4. Confirm it appears as "Netwrix Endpoint Protector Configuration Exporter" with no errors.
 
 ## Usage
 
