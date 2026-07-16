@@ -136,15 +136,23 @@ async function attemptSetDashboardStartDate(tabId, targetDate, history) {
 async function setDashboardStartDate(tabId, targetDate) {
   const expectedIso = targetDate.toISOString().slice(0, 10);
   const history = [];
-  const maxRetries = 3;
+  const maxRetries = 4;
+  let clickDate = targetDate;
 
   for (let retry = 1; retry <= maxRetries; retry++) {
-    const actualValue = await attemptSetDashboardStartDate(tabId, targetDate, history);
+    const actualValue = await attemptSetDashboardStartDate(tabId, clickDate, history);
     if (actualValue === expectedIso) return;
-    history.push({ retry, mismatch: actualValue });
+    history.push({ retry, clicked: clickDate.toISOString().slice(0, 10), mismatch: actualValue });
     if (retry === maxRetries) {
       throw new Error(`Date field shows "${actualValue}", expected "${expectedIso}", after ${maxRetries} attempts. History: ${JSON.stringify(history)}`);
     }
+    // The mismatch was exactly the same every retry with an unchanged target,
+    // which points to a deterministic off-by-one in the page itself (its own
+    // "today" default also runs a day behind), not a flaky click. Measure the
+    // actual offset and compensate on the next click instead of repeating the
+    // same click and expecting a different result.
+    const offsetDays = Math.round((Date.parse(actualValue + 'T00:00:00Z') - Date.parse(expectedIso + 'T00:00:00Z')) / 86400000);
+    clickDate = new Date(clickDate.getTime() - offsetDays * 86400000);
   }
 }
 
