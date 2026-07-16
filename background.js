@@ -85,7 +85,12 @@ function isoDaysAgo(days) {
   return d;
 }
 
-async function setDashboardStartDate(tabId, targetDate) {
+// Opens the picker, navigates to the target month, clicks the target day, and
+// returns the field's resulting value (does not throw on mismatch -- the
+// caller retries, since a single click occasionally lands on the wrong day
+// for reasons not fully understood, possibly a layout shift between reading
+// the cell's coordinates and the click landing).
+async function attemptSetDashboardStartDate(tabId, targetDate, history) {
   const inputCenter = await runInPage(tabId, pageGetStartDateInputCenter);
   if (!inputCenter) throw new Error('Start date field not found on this page.');
   await cdpClick(tabId, inputCenter.x, inputCenter.y);
@@ -96,7 +101,6 @@ async function setDashboardStartDate(tabId, targetDate) {
   const targetYear = targetDate.getFullYear();
 
   const maxNavigationClicks = 14;
-  const history = [];
   for (let attempt = 0; attempt <= maxNavigationClicks; attempt++) {
     const state = await runInPage(tabId, pageReadCalendarState, [targetDay]);
     if (!state || !state.headerText) {
@@ -126,10 +130,21 @@ async function setDashboardStartDate(tabId, targetDate) {
   }
 
   await new Promise(r => setTimeout(r, 700));
+  return runInPage(tabId, pageReadStartDateValue);
+}
+
+async function setDashboardStartDate(tabId, targetDate) {
   const expectedIso = targetDate.toISOString().slice(0, 10);
-  const actualValue = await runInPage(tabId, pageReadStartDateValue);
-  if (actualValue !== expectedIso) {
-    throw new Error(`Date field shows "${actualValue}", expected "${expectedIso}".`);
+  const history = [];
+  const maxRetries = 3;
+
+  for (let retry = 1; retry <= maxRetries; retry++) {
+    const actualValue = await attemptSetDashboardStartDate(tabId, targetDate, history);
+    if (actualValue === expectedIso) return;
+    history.push({ retry, mismatch: actualValue });
+    if (retry === maxRetries) {
+      throw new Error(`Date field shows "${actualValue}", expected "${expectedIso}", after ${maxRetries} attempts. History: ${JSON.stringify(history)}`);
+    }
   }
 }
 
