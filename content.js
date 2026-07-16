@@ -523,8 +523,28 @@ function waitForPageReady(maxWaitMs, intervalMs) {
   });
 }
 
+// DataTables list pages (e.g. System Parameters > Events) paginate to 10 rows
+// per page by default. The "Show" dropdown can visually display "All" while
+// the underlying <select> is still set to "10" -- the label and the actual
+// applied page length can be out of sync -- so only the first page gets
+// extracted. Force every such dropdown to "-1" (DataTables' "All" value) and
+// let it redraw before extraction runs, instead of trusting what it displays.
+async function expandAllDataTablePagination() {
+  const lengthSelects = Array.from(document.querySelectorAll('select'))
+    .filter(sel => sel.offsetParent !== null && Array.from(sel.options).some(o => o.value === '-1'));
+
+  for (const sel of lengthSelects) {
+    if (sel.value === '-1') continue;
+    sel.value = '-1';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 400));
+  }
+}
+
 async function extractNetwrixFormConfig() {
   await waitForPageReady();
+  await expandAllDataTablePagination();
+  await waitForPageReady(); // let the "show all" redraw (often another AJAX fetch) settle
 
   expandAllCollapsedPanels();
   expandAllTabs();
