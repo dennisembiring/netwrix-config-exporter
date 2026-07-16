@@ -89,21 +89,31 @@ async function setDashboardStartDate(tabId, targetDate) {
   const targetYear = targetDate.getFullYear();
 
   const maxNavigationClicks = 14;
+  const history = [];
   for (let attempt = 0; attempt <= maxNavigationClicks; attempt++) {
     const state = await runInPage(tabId, pageReadCalendarState, [targetDay]);
-    if (!state || !state.headerText) throw new Error('Calendar did not open.');
+    if (!state || !state.headerText) {
+      throw new Error(`Calendar did not open. History: ${JSON.stringify(history)}`);
+    }
     const { month, year } = parseCalendarHeader(state.headerText);
     const diff = (targetYear - year) * 12 + (targetMonth - month);
+    history.push({ headerText: state.headerText, parsedMonth: month, parsedYear: year, diff, hasDay: !!state.day, hasPrev: !!state.prev, hasNext: !!state.next });
 
     if (diff === 0) {
-      if (!state.day) throw new Error('Target day not found in the calendar.');
+      if (!state.day) {
+        throw new Error(`Target day ${targetDay} not found in the calendar for "${state.headerText}". History: ${JSON.stringify(history)}`);
+      }
       await cdpClick(tabId, state.day.x, state.day.y);
       break;
     }
-    if (attempt === maxNavigationClicks) throw new Error('Could not reach the target month.');
+    if (attempt === maxNavigationClicks) {
+      throw new Error(`Could not reach the target month (wanted ${targetYear}-${targetMonth + 1}). History: ${JSON.stringify(history)}`);
+    }
 
     const navButton = diff < 0 ? state.prev : state.next;
-    if (!navButton) throw new Error('Calendar navigation arrow not found.');
+    if (!navButton) {
+      throw new Error(`Calendar navigation arrow not found (diff=${diff}, header="${state.headerText}"). History: ${JSON.stringify(history)}`);
+    }
     await cdpClick(tabId, navButton.x, navButton.y);
     await new Promise(r => setTimeout(r, 250));
   }
