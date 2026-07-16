@@ -5,9 +5,14 @@
   "description": "Exports configuration data from Netwrix Endpoint Protector.",
   "permissions": [
     "activeTab",
-    "scripting"
+    "scripting",
+    "debugger",
+    "downloads"
   ],
   "action": {
     "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
   }
 }

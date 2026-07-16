@@ -4,5 +4,6 @@
 *.xlsx
 *.pdf
 *.md
+*.png
 !README.md
 node_modules/

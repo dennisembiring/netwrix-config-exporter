@@ -21,6 +21,10 @@ manually copy settings out of the UI.
 - Waits for AJAX-loaded tables (e.g. Devices, System Administrators) to
   finish rendering before extracting, instead of assuming a fixed delay.
 - Skips password fields by design.
+- Dashboard PNG export: preset buttons (1 week / 2 weeks / 1 month) for the
+  General, Device Control, and Content Aware dashboards. Drives the date-range
+  picker with genuinely trusted clicks (via `chrome.debugger`) since the
+  picker ignores script-dispatched clicks, then screenshots the visible tab.
 - Built-in help page (accessible from the popup) with setup and usage
   instructions.
 
@@ -50,6 +54,7 @@ including known limitations.
 | `manifest.json` | Extension manifest (Manifest V3) |
 | `content.js` | Injected into the Netwrix EPP page; does the DOM extraction and CSV/Markdown/PDF download |
 | `popup.html` / `popup.js` | Extension popup UI: format selector, page navigation buttons, export triggers |
+| `background.js` | Service worker; drives the dashboard date-range picker via `chrome.debugger` and captures/downloads the PNG |
 | `help.html` | In-extension user guide, opened from the popup |
 | `lib/jspdf.umd.min.js` | Bundled [jsPDF](https://github.com/parallax/jsPDF) library (MIT license), used for PDF export |
 
@@ -62,8 +67,7 @@ including known limitations.
   custom class detail views, etc.) because Netwrix's row-action menus only
   respond to real user clicks, not script-simulated ones. Section buttons
   only cover pages reachable directly from the main sidebar.
-
-## Roadmap
-
-- Dashboard export to PNG (General Dashboard, Device Control Dashboard,
-  Content Aware Dashboard) with a user-selected time range.
+- Dashboard PNG export requires the `debugger` permission, so Chrome shows a
+  "started debugging this browser" infobar for the few seconds an export
+  takes. It captures the visible tab only (not the full scrollable page), so
+  the PNG shows whatever fits in the current window.

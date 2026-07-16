@@ -13,6 +13,9 @@
     .format-row { display: flex; gap: 6px; margin: 8px 0; }
     .format-row label { display: flex; align-items: center; gap: 3px; font-size: 12px; cursor: pointer; }
     .format-row input { margin: 0; }
+    .png-dashboard-label { font-size: 11px; color: #444; margin: 6px 0 3px 0; }
+    .png-row { display: flex; gap: 3px; margin-bottom: 6px; }
+    .png-row button { font-size: 11px; padding: 5px 2px; text-align: center; margin-bottom: 0; }
   </style>
 </head>
 <body>
@@ -30,6 +33,26 @@
     <div class="group-label">Dashboard</div>
     <button class="navExport" data-path="Dashboard,System Status">System Status</button>
     <button class="navExport" data-path="Dashboard,Effective Rights">Effective Rights</button>
+
+    <div class="group-label">Dashboard PNG Export</div>
+    <div class="png-dashboard-label">General Dashboard</div>
+    <div class="png-row">
+      <button class="pngExport" data-path="Dashboard,General Dashboard" data-days="7">1 Week</button>
+      <button class="pngExport" data-path="Dashboard,General Dashboard" data-days="14">2 Weeks</button>
+      <button class="pngExport" data-path="Dashboard,General Dashboard" data-days="30">1 Month</button>
+    </div>
+    <div class="png-dashboard-label">Device Control Dashboard</div>
+    <div class="png-row">
+      <button class="pngExport" data-path="Device Control,Dashboard" data-days="7">1 Week</button>
+      <button class="pngExport" data-path="Device Control,Dashboard" data-days="14">2 Weeks</button>
+      <button class="pngExport" data-path="Device Control,Dashboard" data-days="30">1 Month</button>
+    </div>
+    <div class="png-dashboard-label">Content Aware Dashboard</div>
+    <div class="png-row">
+      <button class="pngExport" data-path="Content Aware Protection,Dashboard" data-days="7">1 Week</button>
+      <button class="pngExport" data-path="Content Aware Protection,Dashboard" data-days="14">2 Weeks</button>
+      <button class="pngExport" data-path="Content Aware Protection,Dashboard" data-days="30">1 Month</button>
+    </div>
 
     <div class="group-label">Device Control</div>
     <button class="navExport" data-path="Device Control,Devices">Devices</button>

@@ -36,7 +36,14 @@
     <tr><td>Section buttons (e.g. <em>Global Rights</em>, <em>Mail Settings</em>)</td><td>Automatically navigates to that page for you first, then exports it. One click instead of clicking through the sidebar yourself.</td></tr>
   </table>
 
-  <h2>3. Using it</h2>
+  <h2>3. Dashboard PNG export</h2>
+  <p>The <strong>Dashboard PNG Export</strong> section has 1 Week / 2 Weeks / 1 Month buttons for the General, Device Control, and Content Aware dashboards. Each button navigates to that dashboard, sets the date range, waits for the charts to redraw, and downloads a PNG screenshot.</p>
+  <div class="box">
+    <strong>Why this needs the "debugger" permission:</strong> the dashboard's date-range picker only responds to genuinely trusted mouse clicks - a script-simulated click is silently ignored. The only way an extension can generate a trusted-equivalent click is via <code>chrome.debugger</code>, the same mechanism browser-automation tools use. While a PNG export runs (a few seconds), Chrome shows a "started debugging this browser" infobar - this is normal and expected.
+  </div>
+  <p>The PNG captures the visible browser tab, not the full scrollable page - if content is cut off, maximize the window or zoom out before exporting.</p>
+
+  <h2>4. Using the CSV/Markdown/PDF export</h2>
   <ol>
     <li>Open your Netwrix EPP admin console in a browser tab and make sure it's the <strong>active tab</strong>.</li>
     <li>Click the extension icon in the toolbar to open this popup.</li>
@@ -48,7 +55,7 @@
     <strong>What's in the CSV:</strong> three columns - <code>Category/Panel</code>, <code>Configuration Name</code>, <code>Value/Status</code>. Each row is one setting, checkbox, dropdown, or table record found on the page.
   </div>
 
-  <h2>4. Scope and limitations</h2>
+  <h2>5. Scope and limitations</h2>
   <ul>
     <li><strong>List pages export summaries, not full detail.</strong> For example, "Content Aware Policies (List)" exports the policy names/status/priority table - not each policy's full rule configuration. To get one policy's full detail, open that policy's Edit page manually, then use <strong>Export Current Page</strong>.</li>
     <li><strong>The extension cannot auto-open individual rows.</strong> Opening a specific item (like one policy, one custom class) requires a real click from you - the app doesn't respond to script-simulated clicks on its row-action menus. Section buttons only work for pages reachable directly from the main sidebar.</li>
@@ -57,7 +64,7 @@
     <li>If a page has genuinely no data (e.g. no alerts configured), the export will simply have fewer or zero rows for that section - that's correct, not a bug.</li>
   </ul>
 
-  <h2>5. Troubleshooting</h2>
+  <h2>6. Troubleshooting</h2>
   <div class="warn">
     <strong>Nothing happens when I click a button:</strong> Make sure a Netwrix EPP tab is the currently active tab before clicking the extension icon. The extension always acts on your active browser tab.
   </div>
@@ -68,7 +75,7 @@
     <strong>A page you need isn't in the menu:</strong> Navigate to it manually in Netwrix EPP, then click <strong>Export Current Page</strong> in the popup - this works on any page, listed or not.
   </div>
 
-  <h2>6. Adding more pages to the menu</h2>
+  <h2>7. Adding more pages to the menu</h2>
   <p>The section buttons are defined in <code>popup.html</code> as <code>data-path="Sidebar Item,Sub Item"</code> - a comma-separated list of sidebar labels to click through in order. If you want a new page added, note its exact sidebar path and it can be added the same way.</p>
 
 </body>

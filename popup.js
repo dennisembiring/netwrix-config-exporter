@@ -34,14 +34,25 @@ async function runExtraction(tabId, format) {
 // in order (e.g. "Device Control" then "Global Rights") to navigate before export
 // runs. Must be self-contained (no outside references) since it is sent to
 // chrome.scripting.executeScript as a function, not a separate file.
+//
+// Each subsequent label is searched for only within the previously clicked
+// item's submenu (its next-sibling <ul>), not the whole sidebar. Some labels
+// (e.g. "Dashboard") appear under multiple top-level sections, and once more
+// than one section has been expanded in a session, a plain document-wide text
+// match can click the wrong one.
 function navigateToPath(labels) {
   return new Promise(async (resolve) => {
+    let scope = document;
     for (const label of labels) {
-      const span = Array.from(document.querySelectorAll('span')).find(
+      const spans = Array.from(scope.querySelectorAll('span')).filter(
         el => el.textContent.trim() === label
       );
-      const li = span && span.closest('li');
-      if (li) li.click();
+      const span = spans.find(el => el.offsetParent !== null) || spans[0];
+      if (!span) { resolve(false); return; }
+      const li = span.closest('li');
+      li.click();
+      const submenu = li.nextElementSibling;
+      scope = (submenu && submenu.tagName === 'UL') ? submenu : document;
       await new Promise(r => setTimeout(r, 700));
     }
     resolve(true);
@@ -75,5 +86,42 @@ document.querySelectorAll('.navExport').forEach(button => {
     setStatus('Exporting...');
     await runExtraction(tab.id, getSelectedFormat());
     setStatus('Done.');
+  });
+});
+
+// PNG dashboard export drives the date-range picker via background.js (chrome.debugger),
+// since the picker only reacts to genuinely trusted clicks that a content script can't
+// generate. See background.js for why.
+document.querySelectorAll('.pngExport').forEach(button => {
+  button.addEventListener('click', async () => {
+    const labels = button.dataset.path.split(',');
+    const days = parseInt(button.dataset.days, 10);
+    const rangeLabel = button.textContent.trim();
+    setStatus(`Opening ${labels[labels.length - 1]}...`);
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: navigateToPath,
+      args: [labels]
+    });
+
+    setStatus(`Setting range: ${rangeLabel}...`);
+    const dashboardTitle = labels[labels.length - 1].toLowerCase().replace(/\s+/g, '_');
+    const rangeSlug = rangeLabel.toLowerCase().replace(/\s+/g, '_');
+    const fileBaseName = `${dashboardTitle}_${rangeSlug}`;
+
+    const response = await chrome.runtime.sendMessage({
+      action: 'exportDashboardPng',
+      tabId: tab.id,
+      days,
+      fileBaseName
+    });
+
+    if (response && response.ok) {
+      setStatus('Done.');
+    } else {
+      setStatus(`Failed: ${response ? response.error : 'no response'}`);
+    }
   });
 });
