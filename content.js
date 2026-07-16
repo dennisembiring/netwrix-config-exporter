@@ -466,20 +466,39 @@ function extractDataTables(rows) {
 // Some list pages (e.g. Devices, System Administrators) load their table data via
 // AJAX after the page shell renders. If extraction runs immediately after
 // navigation, the table may not exist yet, producing a false "nothing found"
-// result. Poll briefly for a recognizable panel/table before extracting, instead
-// of assuming a fixed navigation delay was long enough.
+// result. Poll for a recognizable panel/table, and once a data table is found,
+// keep polling until its row count is stable across two consecutive checks --
+// a table can briefly exist with a "loading" placeholder row or a partial first
+// batch of rows before AJAX finishes filling it in.
 function waitForPageReady(maxWaitMs, intervalMs) {
-  maxWaitMs = maxWaitMs || 4000;
+  maxWaitMs = maxWaitMs || 6000;
   intervalMs = intervalMs || 150;
   return new Promise(resolve => {
     const start = Date.now();
+    let lastTableRowCount = -1;
+    function visibleDataTables() {
+      return Array.from(document.querySelectorAll('table')).filter(t => t.offsetParent !== null && t.querySelector('thead') && t.querySelector('tbody tr'));
+    }
     function check() {
-      const ready = document.querySelectorAll('.panel-epp').length > 0 ||
+      const tables = visibleDataTables();
+      const hasNonTablePanel = document.querySelectorAll('.panel-epp').length > 0 ||
         document.querySelectorAll('.x-panel').length > 0 ||
         document.querySelectorAll('.rights-list-view').length > 0 ||
-        document.querySelectorAll('.epp-policy-box').length > 0 ||
-        Array.from(document.querySelectorAll('table')).some(t => t.offsetParent !== null && t.querySelector('tbody tr'));
-      if (ready || Date.now() - start >= maxWaitMs) {
+        document.querySelectorAll('.epp-policy-box').length > 0;
+      const timedOut = Date.now() - start >= maxWaitMs;
+
+      if (tables.length > 0) {
+        const totalRows = tables.reduce((sum, t) => sum + t.querySelectorAll('tbody tr').length, 0);
+        if (totalRows === lastTableRowCount || timedOut) {
+          resolve();
+          return;
+        }
+        lastTableRowCount = totalRows;
+        setTimeout(check, intervalMs);
+        return;
+      }
+
+      if (hasNonTablePanel || timedOut) {
         resolve();
       } else {
         setTimeout(check, intervalMs);
@@ -523,7 +542,13 @@ async function extractNetwrixFormConfig() {
   if (hasDataTables) extractDataTables(rows);
 
   if (rows.length === 0) {
-    alert("A configuration panel was found, but no fields could be extracted from this page.");
+    const tableRowCounts = Array.from(document.querySelectorAll('table'))
+      .filter(t => t.offsetParent !== null)
+      .map(t => t.querySelectorAll('tbody tr').length);
+    const diagnostics = `panels=${document.querySelectorAll('.panel-epp').length}, ` +
+      `x-panels=${document.querySelectorAll('.x-panel').length}, ` +
+      `visible tables=${tableRowCounts.length} (row counts: ${tableRowCounts.join(', ') || 'none'})`;
+    alert(`A configuration panel was found, but no fields could be extracted from this page.\n\nDiagnostics: ${diagnostics}\n\nPlease share this message so the issue can be fixed.`);
     return;
   }
 
