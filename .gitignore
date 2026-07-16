@@ -6,4 +6,5 @@
 *.md
 *.png
 !README.md
+!docs/screenshots/*.png
 node_modules/

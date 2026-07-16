@@ -7,19 +7,22 @@
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #222; }
     h1 { font-size: 22px; border-bottom: 2px solid #333; padding-bottom: 8px; }
     h2 { font-size: 17px; margin-top: 32px; }
+    h3 { font-size: 14px; margin-top: 20px; margin-bottom: 4px; }
     code { background: #f2f2f2; padding: 2px 5px; border-radius: 3px; font-size: 13px; }
     ul, ol { padding-left: 22px; }
     li { margin-bottom: 6px; }
     .box { background: #f7f7f7; border-left: 4px solid #6c63ff; padding: 12px 16px; margin: 16px 0; border-radius: 4px; }
     .warn { background: #fff8e6; border-left: 4px solid #d9a600; padding: 12px 16px; margin: 16px 0; border-radius: 4px; }
     table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13px; }
-    th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; }
+    th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; vertical-align: top; }
     th { background: #f2f2f2; }
+    .example-img { max-width: 100%; border: 1px solid #ddd; border-radius: 4px; margin: 8px 0 16px 0; }
+    .example-caption { font-size: 12px; color: #666; margin-top: -10px; margin-bottom: 16px; }
   </style>
 </head>
 <body>
   <h1>Netwrix Config Exporter - Help</h1>
-  <p>This extension exports configuration data from your Netwrix Endpoint Protector admin console to CSV, so you don't have to manually copy settings out of the UI.</p>
+  <p>This extension exports configuration data from your Netwrix Endpoint Protector admin console to CSV, Markdown, or PDF, and dashboard charts to PNG, so you don't have to manually copy settings out of the UI.</p>
 
   <h2>1. First-time setup</h2>
   <ol>
@@ -29,42 +32,75 @@
     <li>Confirm it appears as "Netwrix Config Exporter" with no errors.</li>
   </ol>
 
-  <h2>2. Two ways to export</h2>
+  <h2>2. Ways to export</h2>
   <table>
-    <tr><th>Button</th><th>What it does</th></tr>
+    <tr><th>Control</th><th>What it does</th></tr>
     <tr><td><strong>Export Current Page</strong></td><td>Exports whatever page is currently open in the active tab - use this for pages not listed below, or for an individual item's detail/edit screen (e.g. one specific Content Aware Policy).</td></tr>
-    <tr><td>Section buttons (e.g. <em>Global Rights</em>, <em>Mail Settings</em>)</td><td>Automatically navigates to that page for you first, then exports it. One click instead of clicking through the sidebar yourself.</td></tr>
+    <tr><td>Format selector (CSV / Markdown / PDF)</td><td>Choose the output format before clicking any export button. Applies to <strong>Export Current Page</strong> and every section button.</td></tr>
+    <tr><td>Section buttons (e.g. <em>Global Rights</em>, <em>Mail Settings</em>)</td><td>Automatically navigates to that page for you first, then exports it in the chosen format. One click instead of clicking through the sidebar yourself.</td></tr>
+    <tr><td>Dashboard PNG Export buttons (1 Week / 2 Weeks / 1 Month)</td><td>Navigates to the chosen dashboard, sets that date range, and downloads a PNG screenshot of the full dashboard. See section 4.</td></tr>
   </table>
 
-  <h2>3. Dashboard PNG export</h2>
-  <p>The <strong>Dashboard PNG Export</strong> section has 1 Week / 2 Weeks / 1 Month buttons for the General, Device Control, and Content Aware dashboards. Each button navigates to that dashboard, sets the date range, waits for the charts to redraw, and downloads a PNG screenshot.</p>
+  <h2>3. Available buttons</h2>
+  <p>Every section button navigates to that exact sidebar page and exports it in your chosen format (CSV/Markdown/PDF).</p>
+  <table>
+    <tr><th>Sidebar section</th><th>Pages</th></tr>
+    <tr><td>Dashboard</td><td>System Status, Effective Rights</td></tr>
+    <tr><td>Device Control</td><td>Devices, Users, Groups, Global Rights, Global Settings</td></tr>
+    <tr><td>Content Aware Protection</td><td>Content Aware Policies (List), Deep Packet Inspection</td></tr>
+    <tr><td>eDiscovery</td><td>Policies and Scans</td></tr>
+    <tr><td>Denylists and Allowlists</td><td>Denylists, Allowlists, URL Categories</td></tr>
+    <tr><td>Enforced Encryption</td><td>EasyLock</td></tr>
+    <tr><td>Offline Temporary Password</td><td>Offline Temporary Password, OTP List</td></tr>
+    <tr><td>Reports and Analysis</td><td>Logs Report, File Tracing, Content Aware Report, Admin Actions, SCIM Provisioning Logs, Online Computers, Online Users, Online Devices, Statistics</td></tr>
+    <tr><td>Alerts</td><td>System Alerts, Device Control Alerts, Content Aware Alerts, EasyLock Alerts</td></tr>
+    <tr><td>Directory Services</td><td>Microsoft Active Directory, Azure Active Directory, SCIM API Configuration</td></tr>
+    <tr><td>Appliance</td><td>Server Information, Server Maintenance, SIEM Integrations</td></tr>
+    <tr><td>System Maintenance</td><td>Exported Entities, System Snapshots, Audit Log Backup, External Storage, System Backup, File Shadows Repository, EPP Clients Migration</td></tr>
+    <tr><td>System Configuration</td><td>Server Update, Client Software, Client Software Upgrade, Client Uninstall, System Administrators, Administrators Groups, System Departments, System Settings, System Security, Mail Settings</td></tr>
+    <tr><td>System Parameters</td><td>Device Types and Notifications, Contextual Detection, Advanced Scanning Exceptions, Rights, Events</td></tr>
+  </table>
+  <p>Not listed here? Navigate to it yourself in Netwrix EPP, then click <strong>Export Current Page</strong> - that works on any page.</p>
+
+  <h2>4. Dashboard PNG export</h2>
+  <p>The <strong>Dashboard PNG Export</strong> section has 1 Week / 2 Weeks / 1 Month buttons for the General, Device Control, and Content Aware dashboards. Each button navigates to that dashboard, sets the date range, waits for the charts to redraw, and downloads a PNG of the full dashboard.</p>
   <div class="box">
     <strong>Why this needs the "debugger" permission:</strong> the dashboard's date-range picker only responds to genuinely trusted mouse clicks - a script-simulated click is silently ignored. The only way an extension can generate a trusted-equivalent click is via <code>chrome.debugger</code>, the same mechanism browser-automation tools use. While a PNG export runs (a few seconds), Chrome shows a "started debugging this browser" infobar - this is normal and expected.
   </div>
-  <p>The PNG captures the full scrollable dashboard, not just the visible viewport.</p>
-
-  <h2>4. Using the CSV/Markdown/PDF export</h2>
-  <ol>
-    <li>Open your Netwrix EPP admin console in a browser tab and make sure it's the <strong>active tab</strong>.</li>
-    <li>Click the extension icon in the toolbar to open this popup.</li>
-    <li>Click a section button, or navigate to a page yourself and click <strong>Export Current Page</strong>.</li>
-    <li>A CSV file downloads automatically - check your browser's Downloads folder.</li>
-  </ol>
-
   <div class="box">
-    <strong>What's in the CSV:</strong> three columns - <code>Category/Panel</code>, <code>Configuration Name</code>, <code>Value/Status</code>. Each row is one setting, checkbox, dropdown, or table record found on the page.
+    <strong>Why the tab briefly zooms out during export:</strong> Netwrix EPP's dashboard layout only renders within the current window height and scrolls internally rather than growing the page. To capture the whole dashboard in one image, the extension temporarily zooms the tab out until everything fits, captures it, then restores your normal zoom level.
   </div>
 
-  <h2>5. Scope and limitations</h2>
+  <h2>5. What the exported files look like</h2>
+  <p>Examples below use placeholder sample data, not real configuration.</p>
+
+  <h3>CSV</h3>
+  <p>Three columns - <code>Category/Panel</code>, <code>Configuration Name</code>, <code>Value/Status</code>. Each row is one setting, checkbox, dropdown, or table record found on the page. Opens cleanly in Excel/Sheets.</p>
+  <img class="example-img" src="docs/screenshots/csv-export-example.png" alt="Example CSV export opened as a table">
+  <div class="example-caption">Example CSV export (sample data)</div>
+
+  <h3>Markdown</h3>
+  <p>Grouped by panel, with a table per panel - readable as plain text or rendered by any Markdown viewer (GitHub, Obsidian, VS Code preview, etc.).</p>
+  <img class="example-img" src="docs/screenshots/md-export-example.png" alt="Example Markdown export rendered">
+  <div class="example-caption">Example Markdown export (sample data)</div>
+
+  <h3>PDF</h3>
+  <p>A formatted document with the page title, a bordered table per panel, and page breaks as needed. List pages (e.g. Devices, System Administrators) get a real multi-column table matching the page's own columns instead - switching to landscape automatically when there are more than 5 columns.</p>
+  <img class="example-img" src="docs/screenshots/pdf-export-example.png" alt="Example PDF export layout">
+  <div class="example-caption">Example PDF export (sample data)</div>
+
+  <h2>6. Scope and limitations</h2>
   <ul>
     <li><strong>List pages export summaries, not full detail.</strong> For example, "Content Aware Policies (List)" exports the policy names/status/priority table - not each policy's full rule configuration. To get one policy's full detail, open that policy's Edit page manually, then use <strong>Export Current Page</strong>.</li>
     <li><strong>The extension cannot auto-open individual rows.</strong> Opening a specific item (like one policy, one custom class) requires a real click from you - the app doesn't respond to script-simulated clicks on its row-action menus. Section buttons only work for pages reachable directly from the main sidebar.</li>
     <li><strong>Password fields are never exported</strong>, by design - for security.</li>
     <li><strong>Collapsed panels and inactive tabs are automatically expanded</strong> before export, so you'll get their data even if you never manually opened them (e.g. all tabs under Policy Denylists/Allowlists on a policy edit page).</li>
+    <li><strong>Paginated list tables are automatically set to show all entries</strong> before export (e.g. System Parameters &gt; Events), not just the first page.</li>
+    <li><strong>Dashboard PNG export requires the "debugger" permission</strong> and briefly zooms the tab out while capturing - see section 4.</li>
     <li>If a page has genuinely no data (e.g. no alerts configured), the export will simply have fewer or zero rows for that section - that's correct, not a bug.</li>
   </ul>
 
-  <h2>6. Troubleshooting</h2>
+  <h2>7. Troubleshooting</h2>
   <div class="warn">
     <strong>Nothing happens when I click a button:</strong> Make sure a Netwrix EPP tab is the currently active tab before clicking the extension icon. The extension always acts on your active browser tab.
   </div>
@@ -74,8 +110,11 @@
   <div class="warn">
     <strong>A page you need isn't in the menu:</strong> Navigate to it manually in Netwrix EPP, then click <strong>Export Current Page</strong> in the popup - this works on any page, listed or not.
   </div>
+  <div class="warn">
+    <strong>Dashboard PNG export fails:</strong> Reload the extension and try again - the popup's status line shows the error message. If it keeps failing, note the exact message; it usually points at the specific step (date picker, chart redraw, or capture) that broke.
+  </div>
 
-  <h2>7. Adding more pages to the menu</h2>
+  <h2>8. Adding more pages to the menu</h2>
   <p>The section buttons are defined in <code>popup.html</code> as <code>data-path="Sidebar Item,Sub Item"</code> - a comma-separated list of sidebar labels to click through in order. If you want a new page added, note its exact sidebar path and it can be added the same way.</p>
 
 </body>

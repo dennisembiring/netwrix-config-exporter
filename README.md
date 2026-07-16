@@ -1,8 +1,9 @@
 # Netwrix Config Exporter
 
 A Chrome extension (Manifest V3) that exports configuration data from a
-Netwrix Endpoint Protector (EPP) admin console to CSV, so you don't have to
-manually copy settings out of the UI.
+Netwrix Endpoint Protector (EPP) admin console to CSV, Markdown, or PDF, and
+dashboard charts to PNG, so you don't have to manually copy settings out of
+the UI.
 
 ## Features
 
@@ -13,18 +14,25 @@ manually copy settings out of the UI.
   Aware Protection, Denylists and Allowlists, Reports and Analysis, Alerts,
   Directory Services, Appliance, System Maintenance, System Configuration,
   System Parameters, Dashboard) that jump to the page and export it in one
-  click.
+  click. Full list in [help.html](help.html#3-available-buttons).
+- Dashboard PNG export: preset buttons (1 week / 2 weeks / 1 month) for the
+  General, Device Control, and Content Aware dashboards. Drives the
+  date-range picker with genuinely trusted clicks (via `chrome.debugger`,
+  since the picker ignores script-dispatched clicks), then zooms the tab out
+  until the whole dashboard fits before capturing (Netwrix's layout scrolls
+  internally rather than growing the page).
 - Handles both UI frameworks used across the app: the older ExtJS-based
   pages (`.x-panel`) and the newer Bootstrap-based pages (`.panel-epp`).
 - Auto-expands collapsed accordion panels and inactive tabs before
   extracting, so a single export captures data you never manually opened.
+- Auto-sets paginated list tables (e.g. System Parameters > Events) to show
+  all entries before extracting, instead of only the first page.
 - Waits for AJAX-loaded tables (e.g. Devices, System Administrators) to
   finish rendering before extracting, instead of assuming a fixed delay.
+- List pages get a real multi-column PDF table matching the page's own
+  columns (landscape automatically for wide tables), instead of squashing
+  every column into one cell.
 - Skips password fields by design.
-- Dashboard PNG export: preset buttons (1 week / 2 weeks / 1 month) for the
-  General, Device Control, and Content Aware dashboards. Drives the date-range
-  picker with genuinely trusted clicks (via `chrome.debugger`) since the
-  picker ignores script-dispatched clicks, then screenshots the visible tab.
 - Built-in help page (accessible from the popup) with setup and usage
   instructions.
 
@@ -40,12 +48,21 @@ manually copy settings out of the UI.
 1. Open your Netwrix EPP admin console in a browser tab and make sure it is
    the active tab.
 2. Click the extension icon to open the popup.
-3. Click a section button (auto-navigates and exports), or navigate to any
-   page yourself and click **Export Current Page**.
-4. A CSV file downloads automatically.
+3. Pick a format (CSV / Markdown / PDF), then click a section button
+   (auto-navigates and exports), or navigate to any page yourself and click
+   **Export Current Page** - or click a Dashboard PNG Export button.
+4. The file downloads automatically.
 
-See the in-extension Help page (click "Help" in the popup) for full details,
-including known limitations.
+See the in-extension Help page (click "Help" in the popup) for the full list
+of available buttons and known limitations.
+
+## Example exports
+
+Examples below use placeholder sample data, not real configuration.
+
+| CSV | Markdown | PDF |
+|---|---|---|
+| ![CSV export example](docs/screenshots/csv-export-example.png) | ![Markdown export example](docs/screenshots/md-export-example.png) | ![PDF export example](docs/screenshots/pdf-export-example.png) |
 
 ## Files
 
@@ -57,6 +74,7 @@ including known limitations.
 | `background.js` | Service worker; drives the dashboard date-range picker via `chrome.debugger` and captures/downloads the PNG |
 | `help.html` | In-extension user guide, opened from the popup |
 | `lib/jspdf.umd.min.js` | Bundled [jsPDF](https://github.com/parallax/jsPDF) library (MIT license), used for PDF export |
+| `docs/screenshots/` | Example export screenshots used in this README and help.html (sample data only) |
 
 ## Known limitations
 
@@ -69,4 +87,4 @@ including known limitations.
   only cover pages reachable directly from the main sidebar.
 - Dashboard PNG export requires the `debugger` permission, so Chrome shows a
   "started debugging this browser" infobar for the few seconds an export
-  takes.
+  takes, and briefly zooms the tab out while capturing.
