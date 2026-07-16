@@ -156,17 +156,55 @@ async function setDashboardStartDate(tabId, targetDate) {
   }
 }
 
+// This app (old ExtJS "viewport" layout) fixes <html>, <body>, AND
+// #epp-content to the window's pixel height with overflow:hidden/auto --
+// only #epp-content visibly scrolls, but <html>/<body> are just as
+// height-locked, so overriding #epp-content alone does nothing (confirmed by
+// testing: document height only grows once all three are overridden
+// together). CDP's full-page capture only sees the outer document's height,
+// so without this it silently captures just the visible viewport's worth.
+// Temporarily strip the constraint on all three so the whole page lays out
+// at full height, then restore it afterwards.
+function pageExpandScrollContainer() {
+  const nodes = [document.documentElement, document.body, document.getElementById('epp-content')].filter(Boolean);
+  const originals = nodes.map(node => ({ height: node.style.height, maxHeight: node.style.maxHeight, overflow: node.style.overflow, overflowY: node.style.overflowY }));
+  nodes.forEach(node => {
+    node.style.setProperty('height', 'auto', 'important');
+    node.style.setProperty('max-height', 'none', 'important');
+    node.style.setProperty('overflow', 'visible', 'important');
+  });
+  return originals;
+}
+
+function pageRestoreScrollContainer(originals) {
+  if (!originals) return;
+  const nodes = [document.documentElement, document.body, document.getElementById('epp-content')].filter(Boolean);
+  nodes.forEach((node, i) => {
+    const original = originals[i];
+    if (!original) return;
+    node.style.height = original.height;
+    node.style.maxHeight = original.maxHeight;
+    node.style.overflow = original.overflow;
+    node.style.overflowY = original.overflowY;
+  });
+}
+
 // chrome.tabs.captureVisibleTab only captures the current viewport, cutting
 // off dashboards taller than the window. Since the debugger is already
 // attached for the date-picker automation, use CDP's own screenshot command
 // instead, which can capture the full scrollable page in one shot.
 async function capturePng(tabId) {
+  const originalStyle = await runInPage(tabId, pageExpandScrollContainer);
+  await new Promise(r => setTimeout(r, 300)); // let the layout reflow
+
   const { cssContentSize } = await chrome.debugger.sendCommand({ tabId }, 'Page.getLayoutMetrics');
   const { data } = await chrome.debugger.sendCommand({ tabId }, 'Page.captureScreenshot', {
     format: 'png',
     captureBeyondViewport: true,
     clip: { x: 0, y: 0, width: cssContentSize.width, height: cssContentSize.height, scale: 1 },
   });
+
+  await runInPage(tabId, pageRestoreScrollContainer, [originalStyle]);
   return `data:image/png;base64,${data}`;
 }
 
