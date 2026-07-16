@@ -156,55 +156,48 @@ async function setDashboardStartDate(tabId, targetDate) {
   }
 }
 
-// This app (old ExtJS "viewport" layout) fixes <html>, <body>, AND
-// #epp-content to the window's pixel height with overflow:hidden/auto --
-// only #epp-content visibly scrolls, but <html>/<body> are just as
-// height-locked, so overriding #epp-content alone does nothing (confirmed by
-// testing: document height only grows once all three are overridden
-// together). CDP's full-page capture only sees the outer document's height,
-// so without this it silently captures just the visible viewport's worth.
-// Temporarily strip the constraint on all three so the whole page lays out
-// at full height, then restore it afterwards.
-function pageExpandScrollContainer() {
-  const nodes = [document.documentElement, document.body, document.getElementById('epp-content')].filter(Boolean);
-  const originals = nodes.map(node => ({ height: node.style.height, maxHeight: node.style.maxHeight, overflow: node.style.overflow, overflowY: node.style.overflowY }));
-  nodes.forEach(node => {
-    node.style.setProperty('height', 'auto', 'important');
-    node.style.setProperty('max-height', 'none', 'important');
-    node.style.setProperty('overflow', 'visible', 'important');
-  });
-  return originals;
+function pageContentFits() {
+  const el = document.getElementById('epp-content');
+  if (!el) return true;
+  return el.scrollHeight <= el.clientHeight + 5;
 }
 
-function pageRestoreScrollContainer(originals) {
-  if (!originals) return;
-  const nodes = [document.documentElement, document.body, document.getElementById('epp-content')].filter(Boolean);
-  nodes.forEach((node, i) => {
-    const original = originals[i];
-    if (!original) return;
-    node.style.height = original.height;
-    node.style.maxHeight = original.maxHeight;
-    node.style.overflow = original.overflow;
-    node.style.overflowY = original.overflowY;
-  });
+// This app (old ExtJS "viewport" layout) sizes <html>/<body>/#epp-content off
+// the window's pixel height on every layout pass, with only #epp-content
+// visibly scrolling internally when content doesn't fit. CSS-overriding the
+// height/overflow constraints directly did NOT work (confirmed by testing --
+// ExtJS's own resize/layout logic re-applies its computed pixel heights,
+// undoing the override). Chrome's page zoom, however, changes
+// window.innerHeight in CSS pixels, which ExtJS's layout logic picks up on
+// its own -- zooming out gives it more effective vertical room and it lays
+// out without needing to scroll, confirmed manually (65% was enough for one
+// dashboard). Zoom level needed varies with how much data is on screen, so
+// step down adaptively instead of hard-coding a percentage.
+async function fitDashboardToViewport(tabId) {
+  const originalZoom = await chrome.tabs.getZoom(tabId);
+  const minZoom = 0.3;
+  const step = 0.05;
+
+  for (let zoom = 1; zoom > minZoom; zoom -= step) {
+    await chrome.tabs.setZoom(tabId, zoom);
+    await new Promise(r => setTimeout(r, 300)); // let ExtJS's layout pass react to the resize
+    if (await runInPage(tabId, pageContentFits)) break;
+  }
+
+  return originalZoom;
 }
 
 // chrome.tabs.captureVisibleTab only captures the current viewport, cutting
-// off dashboards taller than the window. Since the debugger is already
-// attached for the date-picker automation, use CDP's own screenshot command
-// instead, which can capture the full scrollable page in one shot.
+// off dashboards taller than the window. Zooming out (see
+// fitDashboardToViewport) makes the whole dashboard fit within the viewport
+// without needing a separate full-page capture mechanism.
 async function capturePng(tabId) {
-  const originalStyle = await runInPage(tabId, pageExpandScrollContainer);
-  await new Promise(r => setTimeout(r, 300)); // let the layout reflow
+  const originalZoom = await fitDashboardToViewport(tabId);
+  await new Promise(r => setTimeout(r, 300));
 
-  const { cssContentSize } = await chrome.debugger.sendCommand({ tabId }, 'Page.getLayoutMetrics');
-  const { data } = await chrome.debugger.sendCommand({ tabId }, 'Page.captureScreenshot', {
-    format: 'png',
-    captureBeyondViewport: true,
-    clip: { x: 0, y: 0, width: cssContentSize.width, height: cssContentSize.height, scale: 1 },
-  });
+  const { data } = await chrome.debugger.sendCommand({ tabId }, 'Page.captureScreenshot', { format: 'png' });
 
-  await runInPage(tabId, pageRestoreScrollContainer, [originalStyle]);
+  await chrome.tabs.setZoom(tabId, originalZoom);
   return `data:image/png;base64,${data}`;
 }
 
